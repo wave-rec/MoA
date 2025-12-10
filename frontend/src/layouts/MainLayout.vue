@@ -1,23 +1,47 @@
 <template>
-  <div>
-    <header>
-      <h1>MoA</h1>
+  <div class="layout">
+    <header class="header-area">
+      <AppHeaderGuest />
+      <!-- <AppHeaderUser v-if="isLogin" /> -->
     </header>
 
-    <main>
-      <slot />
+    <main class="main-area">
+      <router-view />
     </main>
 
-    <footer>
-      <small>© 2025 MoA</small>
+    <footer class="footer-area">
+      <AppFooter />
     </footer>
   </div>
 </template>
 
-<script setup></script>
+<script>
+import AppHeaderGuest from '@/components/common/AppHeaderGuest.vue'
+import AppFooter from '@/components/common/AppFooter.vue'
+import AppHeaderUser from '@/components/common/AppHeaderUser.vue'
+
+export default {
+  components: { AppHeaderGuest, AppFooter, AppHeaderUser },
+}
+</script>
 
 <style scoped>
-main {
-  padding: 16px;
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header-area {
+  flex-shrink: 0;
+}
+
+.main-area {
+  flex: 1;
+  min-height: 2000px;
+}
+
+.footer-area {
+  flex-shrink: 0;
 }
 </style>
