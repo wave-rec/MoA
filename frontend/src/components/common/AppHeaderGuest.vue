@@ -19,7 +19,7 @@
         <div class="search-box">
           <input type="text" placeholder="검색" class="search-input" />
           <button class="search-button">
-            <svg class="search-icon" viewBox="0 0 24 24">
+            <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 d="M21 21l-4.35-4.35m0 0A6.5 6.5 0 105.5 5.5a6.5 6.5 0 0011.15 11.15z"
                 fill="none"
@@ -58,9 +58,7 @@
 
         <div class="mobile-auth">
           <button class="mobile-auth-btn" @click="goHome">홈</button>
-          <button class="mobile-auth-btn primary" @click="goLogin">
-            로그인
-          </button>
+          <button class="mobile-auth-btn primary" @click="goLogin">로그인</button>
         </div>
       </div>
     </transition>
@@ -112,32 +110,42 @@ const goLogin = () => {
 .logo-section {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   cursor: pointer;
 }
 
 .logo-image {
   height: 56px;
+  display: block;
 }
 
 /* 중앙 메뉴 */
 .navigation {
   display: flex;
+  align-items: center;
   gap: 36px;
   flex: 1;
   justify-content: center;
 }
 
 .nav-link {
+  padding: 0;
   border: none;
   background: transparent;
   font-size: 17px;
   font-weight: 600;
+  letter-spacing: -0.02em;
   color: #111827;
   cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .nav-link:hover {
   color: #6393f2;
+  transform: translateY(-1px);
 }
 
 /* 우측 */
@@ -145,6 +153,7 @@ const goLogin = () => {
   display: flex;
   align-items: center;
   gap: 20px;
+  flex-shrink: 0;
   width: 360px;
   justify-content: flex-end;
 }
@@ -161,6 +170,12 @@ const goLogin = () => {
   border: none;
   background-color: #f3f4f6;
   padding: 0 60px 0 20px;
+  font-size: 15px;
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: #9ca3af;
 }
 
 .search-button {
@@ -168,8 +183,15 @@ const goLogin = () => {
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  background: transparent;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
   border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
   cursor: pointer;
 }
 
@@ -181,25 +203,32 @@ const goLogin = () => {
 /* 홈 / 로그인 버튼 (글자 깨짐 해결 핵심) */
 .auth-buttons {
   display: flex;
+  align-items: center;
   gap: 8px;
   flex-shrink: 0;
 }
 
 .auth-link {
-  min-width: 72px;
+  min-width: 54px;
   height: 34px;
   padding: 0 18px;
   border-radius: 999px;
   border: none;
+  letter-spacing: -0.01em;
+  color: #111827;
   background: transparent;
   font-size: 15px;
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .auth-link:hover {
   color: #6393f2;
+  transform: translateY(-1px);
 }
 
 .auth-link.primary {
@@ -226,6 +255,8 @@ const goLogin = () => {
   background: transparent;
   border: none;
   display: none;
+  align-items: center;
+  justify-content: center;
   flex-direction: column;
   gap: 4px;
   cursor: pointer;
@@ -239,25 +270,45 @@ const goLogin = () => {
 
 .mobile-menu {
   border-top: 1px solid #e5e7eb;
+  background-color: #ffffff;
 }
 
 .mobile-nav {
   display: flex;
   flex-direction: column;
-  padding: 12px 16px;
+  gap: 8px;
+  padding: 12px 16px 8px;
+}
+.mobile-nav-link {
+  text-align: left;
+  padding: 8px 0;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 500;
+  color: #111827;
+  cursor: pointer;
+}
+
+.mobile-nav-link:hover {
+  color: #6393f2;
+  transform: translateY(-1px);
 }
 
 .mobile-auth {
   display: flex;
   gap: 8px;
-  padding: 12px 16px;
+  padding: 0 16px 12px;
 }
 
 .mobile-auth-btn {
   flex: 1;
   height: 38px;
   border: 1px solid #e5e7eb;
-  background: #ffffff;
+  background-color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 .mobile-auth-btn.primary {
@@ -266,7 +317,25 @@ const goLogin = () => {
   border-color: #6393f2;
 }
 
+.mobile-menu-fade-enter-active,
+.mobile-menu-fade-leave-active {
+  transition: opacity 0.18s ease;
+}
+.mobile-menu-fade-enter-from,
+.mobile-menu-fade-leave-to {
+  opacity: 0;
+  border-color: #6393f2;
+}
+
 @media (max-width: 960px) {
+  .header-inner {
+    height: 64px;
+    padding: 0 16px;
+  }
+  .logo-section {
+    gap: 8px;
+  }
+
   .desktop-only {
     display: none;
   }
@@ -277,11 +346,7 @@ const goLogin = () => {
 
   .menu-toggle {
     display: flex;
-  }
-
-  .header-inner {
-    height: 64px;
-    padding: 0 16px;
+    margin-left: auto;
   }
 }
 </style>
