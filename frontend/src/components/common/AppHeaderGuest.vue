@@ -2,11 +2,11 @@
   <header class="header">
     <div class="layout-inner header-inner">
       <!-- 로고 -->
-      <div class="logo-section">
+      <div class="logo-section" @click="goHome">
         <img :src="logoSrc" alt="MoA 로고" class="logo-image" />
       </div>
 
-      <!-- 데스크톱용 네비게이션 -->
+      <!-- 데스크톱 네비게이션 -->
       <nav class="navigation desktop-only">
         <button class="nav-link">모아의 모든 것</button>
         <button class="nav-link">예금 적금 추천</button>
@@ -14,7 +14,7 @@
         <button class="nav-link">게시판</button>
       </nav>
 
-      <!-- 데스크톱용 검색 + 홈/로그인 -->
+      <!-- 우측 영역 -->
       <div class="right-section desktop-only">
         <div class="search-box">
           <input type="text" placeholder="검색" class="search-input" />
@@ -33,11 +33,12 @@
         </div>
 
         <div class="auth-buttons">
-          <button class="auth-link">홈</button>
-          <button class="auth-link primary">로그인</button>
+          <button class="auth-link" @click="goHome">홈</button>
+          <button class="auth-link primary" @click="goLogin">로그인</button>
         </div>
       </div>
 
+      <!-- 모바일 햄버거 -->
       <button class="menu-toggle mobile-only" @click="toggleMenu">
         <span class="menu-bar"></span>
         <span class="menu-bar"></span>
@@ -45,6 +46,7 @@
       </button>
     </div>
 
+    <!-- 모바일 메뉴 -->
     <transition name="mobile-menu-fade">
       <div v-if="isMenuOpen" class="mobile-menu mobile-only">
         <nav class="mobile-nav">
@@ -55,8 +57,8 @@
         </nav>
 
         <div class="mobile-auth">
-          <button class="mobile-auth-btn">홈</button>
-          <button class="mobile-auth-btn primary">로그인</button>
+          <button class="mobile-auth-btn" @click="goHome">홈</button>
+          <button class="mobile-auth-btn primary" @click="goLogin">로그인</button>
         </div>
       </div>
     </transition>
@@ -65,12 +67,24 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import logoSrc from '@/assets/logo-moa.png'
 
+const router = useRouter()
 const isMenuOpen = ref(false)
 
 const toggleMenu = () => {
   isMenuOpen.value = !isMenuOpen.value
+}
+
+const goHome = () => {
+  isMenuOpen.value = false
+  router.push({ name: 'home' })
+}
+
+const goLogin = () => {
+  isMenuOpen.value = false
+  router.push({ name: 'login' })
 }
 </script>
 
@@ -97,6 +111,7 @@ const toggleMenu = () => {
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .logo-image {
@@ -133,7 +148,7 @@ const toggleMenu = () => {
   transform: translateY(-1px);
 }
 
-/* 우측 영역 */
+/* 우측 */
 .right-section {
   display: flex;
   align-items: center;
@@ -143,7 +158,7 @@ const toggleMenu = () => {
   justify-content: flex-end;
 }
 
-/* 검색창 */
+/* 검색 */
 .search-box {
   position: relative;
 }
@@ -185,25 +200,26 @@ const toggleMenu = () => {
   height: 18px;
 }
 
-/* 홈 / 로그인 버튼 */
+/* 홈 / 로그인 버튼 (글자 깨짐 해결 핵심) */
 .auth-buttons {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .auth-link {
   min-width: 54px;
-  padding: 0 18px;
-  white-space: nowrap;
   height: 34px;
+  padding: 0 18px;
   border-radius: 999px;
   border: none;
+  letter-spacing: -0.01em;
+  color: #111827;
   background: transparent;
   font-size: 15px;
   font-weight: 500;
-  letter-spacing: -0.01em;
-  color: #111827;
+  white-space: nowrap;
   cursor: pointer;
   transition:
     background 0.15s ease,
@@ -224,6 +240,7 @@ const toggleMenu = () => {
   background-color: #223459;
 }
 
+/* 모바일 */
 .desktop-only {
   display: flex;
 }
@@ -251,7 +268,6 @@ const toggleMenu = () => {
   background-color: #6393f2;
 }
 
-/* 모바일 메뉴 박스 */
 .mobile-menu {
   border-top: 1px solid #e5e7eb;
   background-color: #ffffff;
@@ -263,7 +279,6 @@ const toggleMenu = () => {
   gap: 8px;
   padding: 12px 16px 8px;
 }
-
 .mobile-nav-link {
   text-align: left;
   padding: 8px 0;
@@ -277,6 +292,7 @@ const toggleMenu = () => {
 
 .mobile-nav-link:hover {
   color: #6393f2;
+  transform: translateY(-1px);
 }
 
 .mobile-auth {
@@ -297,11 +313,10 @@ const toggleMenu = () => {
 
 .mobile-auth-btn.primary {
   background-color: #6393f2;
-  border-color: #6393f2;
   color: #ffffff;
+  border-color: #6393f2;
 }
 
-/* 살짝 페이드 인/아웃 애니메이션 (선택) */
 .mobile-menu-fade-enter-active,
 .mobile-menu-fade-leave-active {
   transition: opacity 0.18s ease;
@@ -309,6 +324,7 @@ const toggleMenu = () => {
 .mobile-menu-fade-enter-from,
 .mobile-menu-fade-leave-to {
   opacity: 0;
+  border-color: #6393f2;
 }
 
 @media (max-width: 960px) {
@@ -316,7 +332,6 @@ const toggleMenu = () => {
     height: 64px;
     padding: 0 16px;
   }
-
   .logo-section {
     gap: 8px;
   }

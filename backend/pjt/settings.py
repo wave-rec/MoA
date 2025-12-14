@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from datetime import timedelta
 
 load_dotenv()
 
@@ -38,16 +39,13 @@ INSTALLED_APPS = [
     'accounts',
     'articles',
     'products',
+
+
     'rest_framework',
-    'rest_framework.authtoken',
-    'dj_rest_auth',
-
-    'django.contrib.sites',
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'dj_rest_auth.registration',
-
+    'corsheaders',
+    'rest_framework_simplejwt',
+   
+   
     # 기본
     'django.contrib.admin',
     'django.contrib.auth',
@@ -57,18 +55,14 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 ]
 
-SITE_ID = 1
+
 
 REST_FRAMEWORK = {
-    # Authentication
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
-    ],
-    # permission
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
-    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
 }
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -79,7 +73,12 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'allauth.account.middleware.AccountMiddleware',
+   
+]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
 
 ROOT_URLCONF = 'pjt.urls'
@@ -153,10 +152,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'accounts.User'
 
-ACCOUNT_EMAIL_VERIFICATION = 'none'
-
 FSS_API_KEY = os.getenv("FSS_API_KEY", "")
 
-if not FSS_API_KEY:
-    raise RuntimeError("FSS_API_KEY가 설정되지 않았습니다. backend/.env 또는 환경변수를 확인하세요.")
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+}
 
