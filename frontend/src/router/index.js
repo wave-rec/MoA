@@ -3,6 +3,7 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/LoginView.vue'
 import SignupView from '@/views/SignupView.vue'
+import BankSearchView from '@/views/BankSearchView.vue'
 
 
 const router = createRouter({
@@ -26,6 +27,11 @@ const router = createRouter({
           path: 'signup',
           name: 'signup',
           component: SignupView,
+        },
+        {
+          path: 'banks',
+          name: 'banks',
+          component: BankSearchView
         },
       ],
     },
