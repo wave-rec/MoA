@@ -64,6 +64,8 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { signup, login } from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
+const authStore = useAuthStore()
 
 const router = useRouter()
 
@@ -115,6 +117,7 @@ const handleSignup = async () => {
   ) return
 
   try {
+    // 회원가입
     await signup({
       email: email.value,
       password: password.value,
@@ -122,14 +125,15 @@ const handleSignup = async () => {
       age: age.value,
     })
 
-    // 🔥 회원가입 후 자동 로그인
+    // 바로 로그인
     const res = await login({
       email: email.value,
       password: password.value,
     })
 
-    localStorage.setItem('access_token', res.data.access)
-    router.push('/')
+    authStore.setToken(res.data.access_token)
+
+    router.push({ name: 'home' })
   } catch {
     alert('회원가입 실패')
   }

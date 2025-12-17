@@ -38,6 +38,8 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
+const authStore = useAuthStore()
 
 const router = useRouter()
 
@@ -67,12 +69,18 @@ const handleLogin = async () => {
       email: email.value,
       password: password.value,
     })
-    localStorage.setItem('access_token', res.data.access)
-    router.push('/')
+
+    authStore.setToken(res.data.access_token)
+    console.log('LOGIN isLogin:', authStore.isLogin)
+    console.log('LOGIN token:', authStore.accessToken)
+    console.log('LOGIN response:', res.data)
+
+    router.push({ name: 'home' })
   } catch {
     alert('로그인 실패')
   }
 }
+
 
 const goSignup = () => router.push('/signup')
 </script>

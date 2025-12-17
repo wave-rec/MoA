@@ -10,7 +10,7 @@
       <nav class="navigation desktop-only">
         <button class="nav-link">모아의 모든 것</button>
         <button class="nav-link">예금 적금 추천</button>
-        <button class="nav-link">은행 지점 찾기</button>
+        <button class="nav-link" @click="goBanks">은행 지점 찾기</button>
         <button class="nav-link">게시판</button>
       </nav>
 
@@ -33,10 +33,10 @@
         </div>
 
         <div class="auth-buttons">
-          <button class="auth-link">홈</button>
+          <button class="auth-link" @click="goHome">홈</button>
 
           <!-- 로그인 후 전용 프로필 버튼 -->
-          <button class="auth-link primary profile-button">
+          <button class="auth-link primary profile-button" @click="goMyPage">
             <svg class="profile-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 d="M12 12c2.2 0 4-1.8 4-4s-1.8-4-4-4-4 1.8-4 4 1.8 4 4 4zm0 2c-2.8 0-8 1.4-8 4v1.5h16V18c0-2.6-5.2-4-8-4z"
@@ -61,13 +61,13 @@
         <nav class="mobile-nav">
           <button class="mobile-nav-link">모아의 모든 것</button>
           <button class="mobile-nav-link">예금 적금 추천</button>
-          <button class="mobile-nav-link">은행 지점 찾기</button>
+          <button class="mobile-nav-link" @click="goBanks">은행 지점 찾기</button>
           <button class="mobile-nav-link">게시판</button>
         </nav>
 
         <div class="mobile-auth">
-          <button class="mobile-auth-btn">홈</button>
-          <button class="mobile-auth-btn primary">마이페이지</button>
+          <button class="mobile-auth-btn" @click="goHome">홈</button>
+          <button class="mobile-auth-btn primary" @click="goMyPage">마이페이지</button>
         </div>
       </div>
     </transition>
@@ -77,10 +77,24 @@
 <script setup>
 import { ref } from 'vue'
 import logoSrc from '@/assets/logo-moa.png'
+import { useRouter } from 'vue-router'
+const router = useRouter()
 
 const isMenuOpen = ref(false)
 const toggleMenu = () => {
   isMenuOpen.value = !isMenuOpen.value
+}
+
+const goHome = () => {
+  router.push({ name: 'home' })
+}
+
+const goBanks = () => {
+  router.push({ name: 'banks' })
+}
+
+const goMyPage = () => {
+  router.push({ name: 'mypage' })
 }
 </script>
 
