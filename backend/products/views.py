@@ -1,9 +1,9 @@
-from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework import status
 
 from .models import Product
-from .serializers import ProductListSerializer
+from .serializers import ProductListSerializer, ProductDetailSerializer
 
 @api_view(["GET"])
 def product_list(request):
@@ -49,4 +49,14 @@ def product_list(request):
         qs = qs.order_by("-max_rate", "-base_rate")
 
     serializer = ProductListSerializer(qs, many=True)
+    return Response(serializer.data)
+
+@api_view(["GET"])
+def product_detail(request, product_id):
+    product = Product.objects.prefetch_related("rates").filter(id=product_id).first()
+
+    if not product:
+        return Response({"detail": "존재하지 않는 상품입니다."}, status=status.HTTP_404_NOT_FOUND)
+    
+    serializer = ProductDetailSerializer(product)
     return Response(serializer.data)
