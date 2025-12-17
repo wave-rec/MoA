@@ -1,8 +1,8 @@
 <template>
   <div class="layout">
     <header class="header-area">
-      <AppHeaderGuest />
-      <!-- <AppHeaderUser v-if="isLogin" /> -->
+      <AppHeaderGuest v-if="!auth.isLogin" />
+      <AppHeaderUser v-else />
     </header>
 
     <main class="main-area">
@@ -19,9 +19,22 @@
 import AppHeaderGuest from '@/components/common/AppHeaderGuest.vue'
 import AppFooter from '@/components/common/AppFooter.vue'
 import AppHeaderUser from '@/components/common/AppHeaderUser.vue'
+import { useAuthStore } from '@/stores/auth'
 
 export default {
-  components: { AppHeaderGuest, AppFooter, AppHeaderUser },
+  components: {
+    AppHeaderGuest,
+    AppHeaderUser,
+    AppFooter,
+  },
+
+  setup() {
+    const auth = useAuthStore()
+    console.log('LAYOUT isLogin:', auth.isLogin)
+    return {
+      auth,
+    }
+  },
 }
 </script>
 

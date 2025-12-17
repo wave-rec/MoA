@@ -4,6 +4,8 @@ import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/LoginView.vue'
 import SignupView from '@/views/SignupView.vue'
 import BankSearchView from '@/views/BankSearchView.vue'
+import MyPageView from '@/views/MyPageView.vue' 
+import ProfileEditView from '@/views/ProfileEditView.vue'
 
 
 const router = createRouter({
@@ -32,6 +34,16 @@ const router = createRouter({
           path: 'banks',
           name: 'banks',
           component: BankSearchView
+        },
+        {
+          path: 'mypage',      
+          name: 'mypage',
+          component: MyPageView,
+        },
+        {
+          path: 'profile/edit',
+          name: 'profile-edit',
+          component: ProfileEditView,
         },
       ],
     },
