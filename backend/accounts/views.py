@@ -10,6 +10,8 @@ from .serializers import (
     UserSerializer,
 )
 from .models import User
+from products.models import Product
+from products.serializers import ProductListSerializer
 
 
 # 회원가입
@@ -66,3 +68,15 @@ def withdraw(request):
     request.user.delete()
     return Response({'message': '회원탈퇴 완료'}, status=204)
 
+# 찜 관련
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_favorites(request):
+    qs = (
+        Product.objects
+        .filter(favorite_by__user=request.user)
+        .distinct()
+        .order_by("-favorite_by__created_at")
+    )
+    serializer = ProductListSerializer(qs, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)

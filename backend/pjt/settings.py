@@ -155,7 +155,7 @@ AUTH_USER_MODEL = 'accounts.User'
 FSS_API_KEY = os.getenv("FSS_API_KEY", "")
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=24),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
 
