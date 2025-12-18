@@ -1,8 +1,9 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 
-from .models import Product
+from .models import Product, Favorite
 from .serializers import ProductListSerializer, ProductDetailSerializer
 
 @api_view(["GET"])
@@ -60,3 +61,18 @@ def product_detail(request, product_id):
     
     serializer = ProductDetailSerializer(product)
     return Response(serializer.data)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def toggle_favorite(request, product_id):
+    product = Product.objects.filter(id=product_id).first()
+    if not product:
+        return Response({"detail":"존재하지 않는 상품입니다."}, status=status.HTTP_404_NOT_FOUND)
+    
+    fav = Favorite.objects.filter(user=request.user, product=product).first()
+    if fav:
+        fav.delete()
+        return Response({"is_favorite":False}, status=status.HTTP_200_OK)
+    
+    Favorite.objects.create(user=request.user, product=product)
+    return Response({"is_favorite":True}, status=status.HTTP_201_CREATED)

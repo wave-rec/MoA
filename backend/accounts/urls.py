@@ -7,4 +7,5 @@ urlpatterns = [
     path('me/', views.me),
     path('logout/', views.logout),
     path('withdraw/', views.withdraw),
+    path('favorites/', views.my_favorites),
 ]
