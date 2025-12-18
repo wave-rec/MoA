@@ -46,6 +46,7 @@ class RecommendRequestSerializer(serializers.Serializer):
     target_amount = serializers.IntegerField(min_value=1)
     target_months = serializers.IntegerField(min_value=1)
     type = serializers.CharField()
+    bank_name = serializers.CharField(required=False)
     is_non_face_to_face = serializers.BooleanField(required=False)
     is_deposit_protected = serializers.BooleanField(required=False)
 

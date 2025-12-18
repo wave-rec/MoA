@@ -129,6 +129,7 @@ def product_recommend(request):
 
     want_nftf = v.get("is_non_face_to_face", None)
     want_dp = v.get("is_deposit_protected", None)
+    bank_name = v.get("bank_name")
 
     qs = (
         Product.objects.filter(type=ptype, rates__save_terms_months=target_months)
@@ -141,6 +142,9 @@ def product_recommend(request):
 
     if want_dp is not None:
         qs = qs.filter(is_deposit_protected=want_dp)
+
+    if bank_name:
+        qs = qs.filter(bank_name=bank_name)
 
     qs = qs.order_by("-max_rate", "-base_rate")[:50]
 
