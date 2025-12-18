@@ -6,6 +6,10 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Product, Favorite, ProductRate
 from .serializers import ProductListSerializer, ProductDetailSerializer, RecommendRequestSerializer, RecommendResponseSerializer
 
+
+# ============================================================
+# - 상품 목록 조회 API
+# ============================================================
 @api_view(["GET"])
 def product_list(request):
     qs = Product.objects.all()
@@ -52,6 +56,9 @@ def product_list(request):
     serializer = ProductListSerializer(qs, many=True)
     return Response(serializer.data)
 
+# ============================================================
+# - 상품 상세 조회 API
+# ============================================================
 @api_view(["GET"])
 def product_detail(request, product_id):
     product = Product.objects.prefetch_related("rates").filter(id=product_id).first()
@@ -62,6 +69,9 @@ def product_detail(request, product_id):
     serializer = ProductDetailSerializer(product)
     return Response(serializer.data)
 
+# ============================================================
+# - 상품 찜 토글 API
+# ============================================================
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def toggle_favorite(request, product_id):
@@ -77,6 +87,9 @@ def toggle_favorite(request, product_id):
     Favorite.objects.create(user=request.user, product=product)
     return Response({"is_favorite":True}, status=status.HTTP_201_CREATED)
 
+# ============================================================
+# - 추천 계산용 유틸 함수
+# ============================================================
 def _calc_expected_amount(principal: float, months: int, rate: float) -> float:
     return principal * (1 + (rate / 100) * (months / 12))
 
@@ -95,6 +108,9 @@ def _score(product: Product, months: int, want_nftf, want_dp) -> int:
     return min(score, 100)
 
 
+# ============================================================
+# - 조건 기반 상품 추천 API
+# ============================================================
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def product_recommend(request):
@@ -152,3 +168,20 @@ def product_recommend(request):
 
     res = RecommendResponseSerializer({"results": results})
     return Response(res.data, status=status.HTTP_200_OK)
+
+# ============================================================
+# - 찜 목록 조회 API (마이페이지용)
+# ============================================================
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def favorite_list(request):
+    favorites = (
+        Favorite.objects
+        .filter(user=request.user)
+        .select_related("product")
+        .order_by("-created_at")
+    )
+
+    products = [fav.product for fav in favorites]
+    serializer = ProductListSerializer(products, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
