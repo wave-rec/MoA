@@ -41,3 +41,42 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "rates",
             "is_favorite",
         )
+
+class RecommendRequestSerializer(serializers.Serializer):
+    target_amount = serializers.IntegerField(min_value=1)
+    target_months = serializers.IntegerField(min_value=1)
+    type = serializers.CharField()
+    is_non_face_to_face = serializers.BooleanField(required=False)
+    is_deposit_protected = serializers.BooleanField(required=False)
+
+class RecommendItemSerializer(serializers.Serializer):
+    product_id = serializers.IntegerField()
+    fin_prdt_cd = serializers.CharField()
+    bank_name = serializers.CharField()
+    name = serializers.CharField()
+    base_rate = serializers.FloatField(allow_null=True)
+    max_rate = serializers.FloatField(allow_null=True)
+
+    match_score = serializers.IntegerField()
+    expected_amount = serializers.FloatField()
+
+class RecommendResponseSerializer(serializers.Serializer):
+    results = RecommendItemSerializer(many=True)
+
+class ProductRecommendRequestSerializer(serializers.Serializer):
+    type = serializers.CharField(required=False)
+    bank_name = serializers.CharField(required=False)
+    is_non_face_to_face = serializers.BooleanField(required=False)
+    is_deposit_protected = serializers.BooleanField(required=False)
+
+    save_terms_months = serializers.IntegerField(required=False, min_value=1)
+    min_base_rate = serializers.FloatField(required=False, min_value=0)
+    min_max_rate = serializers.FloatField(required=False, min_value=0)
+
+    sort = serializers.ChoiceField(
+        required=False,
+        choices=["max_rate_desc", "base_rate_desc"],
+        default="max_rate_desc",
+    )
+
+    limit = serializers.IntegerField(required=False, min_value=1, max_value=50, default=10)

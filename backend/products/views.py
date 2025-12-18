@@ -3,8 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
-from .models import Product, Favorite
-from .serializers import ProductListSerializer, ProductDetailSerializer
+from .models import Product, Favorite, ProductRate
+from .serializers import ProductListSerializer, ProductDetailSerializer, RecommendRequestSerializer, RecommendResponseSerializer
 
 @api_view(["GET"])
 def product_list(request):
@@ -76,3 +76,79 @@ def toggle_favorite(request, product_id):
     
     Favorite.objects.create(user=request.user, product=product)
     return Response({"is_favorite":True}, status=status.HTTP_201_CREATED)
+
+def _calc_expected_amount(principal: float, months: int, rate: float) -> float:
+    return principal * (1 + (rate / 100) * (months / 12))
+
+def _score(product: Product, months: int, want_nftf, want_dp) -> int:
+    score = 50 
+
+    if want_nftf is not None and product.is_non_face_to_face == want_nftf:
+        score += 20
+
+    if want_dp is not None and product.is_deposit_protected == want_dp:
+        score += 20
+
+    if product.max_rate is not None or product.base_rate is not None:
+        score += 10
+
+    return min(score, 100)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def product_recommend(request):
+    req = RecommendRequestSerializer(data=request.data)
+    req.is_valid(raise_exception=True)
+    v = req.validated_data
+
+    target_amount = v["target_amount"]
+    target_months = v["target_months"]
+    ptype = v["type"]
+
+    want_nftf = v.get("is_non_face_to_face", None)
+    want_dp = v.get("is_deposit_protected", None)
+
+    qs = (
+        Product.objects.filter(type=ptype, rates__save_terms_months=target_months)
+        .prefetch_related("rates")
+        .distinct()
+    )
+
+    if want_nftf is not None:
+        qs = qs.filter(is_non_face_to_face=want_nftf)
+
+    if want_dp is not None:
+        qs = qs.filter(is_deposit_protected=want_dp)
+
+    qs = qs.order_by("-max_rate", "-base_rate")[:50]
+
+    results = []
+    for p in qs:
+        rate_obj = next((r for r in p.rates.all() if r.save_terms_months == target_months), None)
+
+        base_rate = rate_obj.base_rate if rate_obj and rate_obj.base_rate is not None else p.base_rate
+        max_rate = rate_obj.max_rate if rate_obj and rate_obj.max_rate is not None else p.max_rate
+
+        use_rate = max_rate or base_rate or 0
+
+        results.append({
+            "product_id": p.id,
+            "fin_prdt_cd": p.fin_prdt_cd,
+            "bank_name": p.bank_name,
+            "name": p.name,
+            "base_rate": base_rate,
+            "max_rate": max_rate,
+            "match_score": _score(p, target_months, want_nftf, want_dp),  # ✅ 인자 정상
+            "expected_amount": _calc_expected_amount(target_amount, target_months, use_rate),
+        })
+
+    results.sort(
+        key=lambda x: (x["match_score"], x["max_rate"] or 0, x["base_rate"] or 0),
+        reverse=True
+    )
+
+    results = results[:20]
+
+    res = RecommendResponseSerializer({"results": results})
+    return Response(res.data, status=status.HTTP_200_OK)
