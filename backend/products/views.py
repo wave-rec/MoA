@@ -18,18 +18,23 @@ def product_list(request):
     product_type = request.GET.get("type")
     if product_type:
         qs = qs.filter(type=product_type)
+    
+    # 2) 은행명 필터
+    bank_name = request.GET.get("bank_name")
+    if bank_name:
+        qs = qs.filter(bank_name=bank_name)
 
-    # 2) 비대면 가입 여부
+    # 3) 비대면 가입 여부
     is_nftf = request.GET.get("is_non_face_to_face")
     if is_nftf in ["true", "false"]:
         qs = qs.filter(is_non_face_to_face=(is_nftf == "true"))
 
-    # 3) 보호 여부
+    # 4) 보호 여부
     is_dp = request.GET.get("is_deposit_protected")
     if is_dp in ["true", "false"]:
         qs = qs.filter(is_deposit_protected=(is_dp == "true"))
 
-    # 4) 최대 최소 
+    # 5) 최대 최소 
     min_base_rate = request.GET.get("min_base_rate")
     if min_base_rate:
         try:
@@ -44,7 +49,7 @@ def product_list(request):
         except ValueError:
             pass
 
-    # 5) 분류
+    # 6) 분류
     sort = request.GET.get("sort")
     if sort == "max_rate_desc":
         qs = qs.order_by("-max_rate", "-base_rate")
@@ -185,3 +190,18 @@ def favorite_list(request):
     products = [fav.product for fav in favorites]
     serializer = ProductListSerializer(products, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+# ============================================================
+# - 은행 별로 모아 보기
+# ============================================================
+@api_view(["GET"])
+def bank_list(request):
+    banks = (
+       Product.objects
+        .exclude(bank_name__isnull=True)
+        .exclude(bank_name__exact="")
+        .values_list("bank_name", flat=True)
+        .distinct()
+        .order_by("bank_name")
+    )
+    return Response({"banks": list(banks)}) 
