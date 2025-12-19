@@ -51,7 +51,6 @@ export default {
 
 .main-area {
   flex: 1;
-  min-height: 2000px;
 }
 
 .footer-area {
