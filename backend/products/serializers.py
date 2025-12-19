@@ -49,6 +49,7 @@ class RecommendRequestSerializer(serializers.Serializer):
     bank_name = serializers.CharField(required=False)
     is_non_face_to_face = serializers.BooleanField(required=False)
     is_deposit_protected = serializers.BooleanField(required=False)
+    limit = serializers.IntegerField(required=False, min_value=1, max_value=50, default=20)
 
 class RecommendItemSerializer(serializers.Serializer):
     product_id = serializers.IntegerField()

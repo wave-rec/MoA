@@ -58,6 +58,16 @@ def product_list(request):
     else:
         qs = qs.order_by("-max_rate", "-base_rate")
 
+    # 7) limit (기본 20, 최대 50)
+    limit = request.GET.get("limit")
+    try:
+        limit = int(limit) if limit is not None else 20
+    except ValueError:
+        limit = 20
+    limit = max(1, min(limit, 50))
+
+    qs = qs[:limit]
+
     serializer = ProductListSerializer(qs, many=True)
     return Response(serializer.data)
 
@@ -130,6 +140,7 @@ def product_recommend(request):
     want_nftf = v.get("is_non_face_to_face", None)
     want_dp = v.get("is_deposit_protected", None)
     bank_name = v.get("bank_name")
+    limit = v.get("limit", 20)
 
     qs = (
         Product.objects.filter(type=ptype, rates__save_terms_months=target_months)
@@ -146,7 +157,7 @@ def product_recommend(request):
     if bank_name:
         qs = qs.filter(bank_name=bank_name)
 
-    qs = qs.order_by("-max_rate", "-base_rate")[:50]
+    qs = qs.order_by("-max_rate", "-base_rate")[:limit]
 
     results = []
     for p in qs:
