@@ -18,18 +18,23 @@ def product_list(request):
     product_type = request.GET.get("type")
     if product_type:
         qs = qs.filter(type=product_type)
+    
+    # 2) 은행명 필터
+    bank_name = request.GET.get("bank_name")
+    if bank_name:
+        qs = qs.filter(bank_name=bank_name)
 
-    # 2) 비대면 가입 여부
+    # 3) 비대면 가입 여부
     is_nftf = request.GET.get("is_non_face_to_face")
     if is_nftf in ["true", "false"]:
         qs = qs.filter(is_non_face_to_face=(is_nftf == "true"))
 
-    # 3) 보호 여부
+    # 4) 보호 여부
     is_dp = request.GET.get("is_deposit_protected")
     if is_dp in ["true", "false"]:
         qs = qs.filter(is_deposit_protected=(is_dp == "true"))
 
-    # 4) 최대 최소 
+    # 5) 최대 최소 
     min_base_rate = request.GET.get("min_base_rate")
     if min_base_rate:
         try:
@@ -44,7 +49,7 @@ def product_list(request):
         except ValueError:
             pass
 
-    # 5) 분류
+    # 6) 분류
     sort = request.GET.get("sort")
     if sort == "max_rate_desc":
         qs = qs.order_by("-max_rate", "-base_rate")
@@ -52,6 +57,16 @@ def product_list(request):
         qs = qs.order_by("-base_rate", "-max_rate")
     else:
         qs = qs.order_by("-max_rate", "-base_rate")
+
+    # 7) limit (기본 20, 최대 50)
+    limit = request.GET.get("limit")
+    try:
+        limit = int(limit) if limit is not None else 20
+    except ValueError:
+        limit = 20
+    limit = max(1, min(limit, 50))
+
+    qs = qs[:limit]
 
     serializer = ProductListSerializer(qs, many=True)
     return Response(serializer.data)
@@ -124,6 +139,8 @@ def product_recommend(request):
 
     want_nftf = v.get("is_non_face_to_face", None)
     want_dp = v.get("is_deposit_protected", None)
+    bank_name = v.get("bank_name")
+    limit = v.get("limit", 20)
 
     qs = (
         Product.objects.filter(type=ptype, rates__save_terms_months=target_months)
@@ -137,7 +154,10 @@ def product_recommend(request):
     if want_dp is not None:
         qs = qs.filter(is_deposit_protected=want_dp)
 
-    qs = qs.order_by("-max_rate", "-base_rate")[:50]
+    if bank_name:
+        qs = qs.filter(bank_name=bank_name)
+
+    qs = qs.order_by("-max_rate", "-base_rate")[:limit]
 
     results = []
     for p in qs:
@@ -185,3 +205,18 @@ def favorite_list(request):
     products = [fav.product for fav in favorites]
     serializer = ProductListSerializer(products, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+# ============================================================
+# - 은행 별로 모아 보기
+# ============================================================
+@api_view(["GET"])
+def bank_list(request):
+    banks = (
+       Product.objects
+        .exclude(bank_name__isnull=True)
+        .exclude(bank_name__exact="")
+        .values_list("bank_name", flat=True)
+        .distinct()
+        .order_by("bank_name")
+    )
+    return Response({"banks": list(banks)}) 
