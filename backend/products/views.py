@@ -17,7 +17,7 @@ def product_list(request):
     # 1) 예금 / 적금 타입
     product_type = request.GET.get("type")
     if product_type:
-        qs = qs.filter(type=product_type)
+        qs = qs.filter(type=product_type.upper())
     
     # 2) 은행명 필터
     bank_name = request.GET.get("bank_name")
@@ -135,7 +135,7 @@ def product_recommend(request):
 
     target_amount = v["target_amount"]
     target_months = v["target_months"]
-    ptype = v["type"]
+    ptype = v["type"].upper()
 
     want_nftf = v.get("is_non_face_to_face", None)
     want_dp = v.get("is_deposit_protected", None)
@@ -184,7 +184,7 @@ def product_recommend(request):
         reverse=True
     )
 
-    results = results[:20]
+    results = results[:limit]
 
     res = RecommendResponseSerializer({"results": results})
     return Response(res.data, status=status.HTTP_200_OK)
