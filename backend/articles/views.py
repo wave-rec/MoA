@@ -1,38 +1,80 @@
+from rest_framework import generics, permissions, status
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
-from rest_framework import status
+from .models import Post, Comment
+from .serializers import (
+    PostListSerializer,
+    PostDetailSerializer,
+    CommentSerializer,
+)
+from .permissions import IsOwner
+from django.db.models import Count
 
-# permission Decorators
-from rest_framework.decorators import permission_classes
-from rest_framework.permissions import IsAuthenticated
+# 게시글 목록 및 작성
+class PostListCreateView(generics.ListCreateAPIView):
+    permission_classes = []
 
-from django.shortcuts import get_object_or_404, get_list_or_404
+    def get_queryset(self):
+        queryset = Post.objects.annotate(
+            comment_count=Count('comments')
+        ).order_by('-created_at')
 
-from .serializers import ArticleListSerializer, ArticleSerializer
-from .models import Article
+        category = self.request.query_params.get('category')
+        if category:
+            category = category.rstrip('/') 
+            queryset = queryset.filter(category=category)
+
+        return queryset
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return PostListSerializer
+        return PostDetailSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAuthenticated()]
+        return []
 
 
-@api_view(['GET', 'POST'])
-@permission_classes([IsAuthenticated])
-def article_list(request):
-    if request.method == 'GET':
-        articles = get_list_or_404(Article)
-        serializer = ArticleListSerializer(articles, many=True)
-        return Response(serializer.data)
 
-    elif request.method == 'POST':
-        serializer = ArticleSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            # serializer.save()
-            serializer.save(user=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+# 게시글 상세, 수정, 삭제
+class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Post.objects.all()
+    serializer_class = PostDetailSerializer
+
+    def get_permissions(self):
+        if self.request.method in ['PATCH', 'DELETE']:
+            return [permissions.IsAuthenticated(), IsOwner()]
+        return []
 
 
-@api_view(['GET'])
-def article_detail(request, article_pk):
-    article = get_object_or_404(Article, pk=article_pk)
+# 댓글 목록, 작성
+class CommentListCreateView(generics.ListCreateAPIView):
+    serializer_class = CommentSerializer
 
-    if request.method == 'GET':
-        serializer = ArticleSerializer(article)
-        print(serializer.data)
-        return Response(serializer.data)
+    def get_queryset(self):
+        return Comment.objects.filter(post_id=self.kwargs['post_id'])
+
+    def perform_create(self, serializer):
+        serializer.save(
+            user=self.request.user,
+            post_id=self.kwargs['post_id']
+        )
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAuthenticated()]
+        return []
+
+# 댓글 수정, 삭제
+class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+
+    def get_permissions(self):
+        if self.request.method in ['PATCH', 'DELETE']:
+            return [permissions.IsAuthenticated(), IsOwner()]
+        return []
