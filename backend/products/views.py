@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
-from .models import Product, Favorite, ProductRate
+from .models import Product, Favorite, ProductRate, Subscription
 from .serializers import ProductListSerializer, ProductDetailSerializer, RecommendRequestSerializer, RecommendResponseSerializer
 
 
@@ -220,3 +220,35 @@ def bank_list(request):
         .order_by("bank_name")
     )
     return Response({"banks": list(banks)}) 
+
+@api_view(["POST", "DELETE"])
+@permission_classes([IsAuthenticated])
+def subscribe_product(request, product_id):
+    product = Product.objects.filter(id=product_id).first()
+    if not product:
+        return Response({"detail":"존재하지 않는 상품입니다."}, status=status.HTTP_404_NOT_FOUND)
+    
+    if request.method == "POST":
+        obj, created = Subscription.objects.get_or_create(user=request.user, product=product)
+        if created:
+            return Response({"is_subscribed":True}, status=status.HTTP_201_CREATED)
+        return Response({"is_subscribed":True, "detail":"이미 가입한 상품입니다."}, status=status.HTTP_200_OK)
+    
+    deleted, _ = Subscription.objects.filter(user=request.user, product=product).delete()
+    if deleted:
+        return Response({"is_subscribed":False}, status=status.HTTP_200_OK)
+    
+    return Response({"is_subscribed":False, "detail": "가입 내역이 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def subscription_list(request):
+    subs = (
+        Subscription.objects
+        .filter(user=request.user)
+        .select_related("product")
+        .order_by("-created_at")
+    )
+    products = [s.product for s in subs]
+    serializer = ProductListSerializer(products, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
