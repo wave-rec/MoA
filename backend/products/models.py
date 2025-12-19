@@ -46,3 +46,14 @@ class Favorite(models.Model):
 
     class Meta:
         unique_together = ("user", "product")
+
+class Subscription(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="subscription")
+    product = models.ForeignKey("Product", on_delete=models.CASCADE, related_name="subscribed_by")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "product")
+
+    def __str__(self):
+        return f"{self.user_id} subscribed {self.product_id}"
