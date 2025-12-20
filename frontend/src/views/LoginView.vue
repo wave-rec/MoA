@@ -71,9 +71,12 @@ const handleLogin = async () => {
     })
 
     authStore.setToken(res.data.access_token)
-    console.log('LOGIN isLogin:', authStore.isLogin)
-    console.log('LOGIN token:', authStore.accessToken)
-    console.log('LOGIN response:', res.data)
+
+    authStore.setUser({
+      id: res.data.user.id,
+      name: res.data.user.name,
+      email: res.data.user.email,
+    })
 
     router.push({ name: 'home' })
   } catch {
