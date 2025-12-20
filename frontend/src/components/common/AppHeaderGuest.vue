@@ -11,7 +11,7 @@
         <button class="nav-link">모아의 모든 것</button>
         <button class="nav-link">예금 적금 추천</button>
         <button class="nav-link" @click="goBanks">은행 지점 찾기</button>
-        <button class="nav-link">게시판</button>
+        <button class="nav-link" @click="goPosts">게시판</button>
       </nav>
 
       <!-- 우측 영역 -->
@@ -53,7 +53,7 @@
           <button class="mobile-nav-link">모아의 모든 것</button>
           <button class="mobile-nav-link">예금 적금 추천</button>
           <button class="mobile-nav-link" @click="goBanks">은행 지점 찾기</button>
-          <button class="mobile-nav-link">게시판</button>
+          <button class="mobile-nav-link" @click="goPosts">게시판</button>
         </nav>
 
         <div class="mobile-auth">
@@ -89,6 +89,10 @@ const goLogin = () => {
 const goBanks = () => {
   isMenuOpen.value = false
   router.push({ name: 'banks' })
+}
+const goPosts = () => {
+  isMenuOpen.value = false   
+  router.push({ name: 'posts' })
 }
 </script>
 
