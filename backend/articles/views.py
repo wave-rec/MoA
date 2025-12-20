@@ -54,6 +54,7 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
 # 댓글 목록, 작성
 class CommentListCreateView(generics.ListCreateAPIView):
     serializer_class = CommentSerializer
+    pagination_class = None
 
     def get_queryset(self):
         return Comment.objects.filter(post_id=self.kwargs['post_id'])

@@ -7,6 +7,9 @@ import BankSearchView from '@/views/BankSearchView.vue'
 import MyPageView from '@/views/MyPageView.vue'
 import ProfileEditView from '@/views/ProfileEditView.vue'
 import RecommendView from '@/views/RecommendView.vue'
+import PostListView from '@/views/PostListView.vue'
+import PostCreateView from '@/views/PostCreateView.vue'
+import PostDetailView from '@/views/PostDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -49,6 +52,22 @@ const router = createRouter({
           path: '/recommend',
           name: 'recommend',
           component: RecommendView,
+        },
+        {
+          path: 'posts',
+          name: 'posts',
+          component: PostListView,
+        },
+        {
+          path: 'posts/create',
+          name: 'post-create',
+          component: PostCreateView,
+        },
+        {
+          path: 'posts/:id',
+          name: 'post-detail',
+          component: PostDetailView,
+          props: true,
         },
       ],
     },
