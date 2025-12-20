@@ -4,9 +4,9 @@ import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/LoginView.vue'
 import SignupView from '@/views/SignupView.vue'
 import BankSearchView from '@/views/BankSearchView.vue'
-import MyPageView from '@/views/MyPageView.vue' 
+import MyPageView from '@/views/MyPageView.vue'
 import ProfileEditView from '@/views/ProfileEditView.vue'
-
+import RecommendView from '@/views/RecommendView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -33,10 +33,10 @@ const router = createRouter({
         {
           path: 'banks',
           name: 'banks',
-          component: BankSearchView
+          component: BankSearchView,
         },
         {
-          path: 'mypage',      
+          path: 'mypage',
           name: 'mypage',
           component: MyPageView,
         },
@@ -44,6 +44,11 @@ const router = createRouter({
           path: 'profile/edit',
           name: 'profile-edit',
           component: ProfileEditView,
+        },
+        {
+          path: '/recommend',
+          name: 'recommend',
+          component: RecommendView,
         },
       ],
     },
