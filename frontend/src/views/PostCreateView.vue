@@ -15,6 +15,7 @@
           <option>전체</option>
           <option>예금</option>
           <option>적금</option>
+          <option>기타</option>
         </select>
       </div>
 
@@ -54,22 +55,19 @@ import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
-
-
-
-/* 입력값 */
 const selectedCategory = ref('전체')
 const title = ref('')
 const content = ref('')
 
-/* 🔥 한글 → 백엔드 enum 매핑 */
+
 const categoryMap = {
   전체: 'DEPOSIT',
   예금: 'DEPOSIT',
   적금: 'SAVINGS',
+  기타: 'ETC',
 }
 
-/* 글 작성 */
+
 const submitPost = async () => {
   if (!authStore.isLogin) {
     alert('로그인이 필요합니다.')
@@ -77,7 +75,7 @@ const submitPost = async () => {
     return
   }
 
-  // 🔽 기존 글 작성 로직 그대로
+
   try {
     await api.post('/api/v1/posts/', {
     title: title.value,
@@ -159,7 +157,6 @@ select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23333' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
 
-  /* 🔥 여기 숫자만 조절하면 됨 */
   background-position: right 10px center;
 
   padding-right: 48px;

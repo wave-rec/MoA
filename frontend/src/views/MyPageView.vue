@@ -31,7 +31,7 @@
     <section class="menu-grid">
       <div class="menu-card" @click="goEdit">
         <h3>회원정보 수정</h3>
-        <p>개인 정보 및 비밀번호 변경</p>
+        <p>개인 정보 변경</p>
       </div>
 
       <div class="menu-card" @click="goLikes">

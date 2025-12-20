@@ -84,7 +84,7 @@ const post = ref(null)
 const comments = ref([])
 const newComment = ref('')
 
-/* ✅ 댓글을 무조건 배열로 보정 */
+/* 댓글을 무조건 배열로 보정 */
 const safeComments = computed(() => {
   return Array.isArray(comments.value) ? comments.value : []
 })
@@ -99,7 +99,6 @@ const fetchPost = async () => {
 const fetchComments = async () => {
   const res = await api.get(`/api/v1/posts/${postId}/comments/`)
 
-  // 👇 핵심: 배열로 강제 보정
   comments.value = Array.isArray(res.data)
     ? res.data
     : res.data.results || []
@@ -129,7 +128,7 @@ const isMyPost = computed(() => {
     authStore.isLogin &&
     authStore.user &&
     post.value &&
-    post.value.user_name === authStore.user.name
+    post.value.user_id === authStore.user.id
   )
 })
 
