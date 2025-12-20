@@ -3,7 +3,11 @@ from django.conf import settings
 from django.db import transaction
 from products.models import Product, ProductRate
 
-FSS_DEPOSIT_API_URL = "https://finlife.fss.or.kr/finlifeapi/depositProductsSearch.json"
+# API URL 통합
+FSS_API_URLS = {
+    "deposit": "https://finlife.fss.or.kr/finlifeapi/depositProductsSearch.json",
+    "savings": "https://finlife.fss.or.kr/finlifeapi/savingProductsSearch.json",
+}
 
 
 def _to_int(value, default=None):
@@ -26,9 +30,14 @@ def _is_non_face_to_face(join_way: str) -> bool:
     return ("인터넷" in join_way) or ("스마트폰" in join_way)
 
 
-def fetch_deposit_products(top_fin_grp_no="020000", page_no=1) -> dict:
+def fetch_products(product_type="deposit", top_fin_grp_no="020000", page_no=1) -> dict:
     if not settings.FSS_API_KEY:
         raise RuntimeError("FSS_API_KEY가 없습니다.")
+    
+    # 타입에 맞는 API URL 선택
+    api_url = FSS_API_URLS.get(product_type)
+    if not api_url:
+        raise ValueError(f"올바르지 않은 product_type: {product_type}")
 
     params = {
         "auth": settings.FSS_API_KEY,
@@ -36,7 +45,7 @@ def fetch_deposit_products(top_fin_grp_no="020000", page_no=1) -> dict:
         "pageNo": page_no,
     }
 
-    res = requests.get(FSS_DEPOSIT_API_URL, params=params, timeout=10)
+    res = requests.get(api_url, params=params, timeout=10)
     res.raise_for_status()
 
     data = res.json()
@@ -49,13 +58,17 @@ def fetch_deposit_products(top_fin_grp_no="020000", page_no=1) -> dict:
 
 
 @transaction.atomic
-def upsert_deposit_products(result: dict) -> dict:
+def upsert_products(result: dict, product_type="deposit") -> dict:
+
     base_list = result.get("baseList", [])
     option_list = result.get("optionList", [])
 
     product_map = {}
+    
+    # 타입을 대문자로 변환 (DEPOSIT, SAVINGS)
+    db_type = product_type.upper()
 
-    # 1️⃣ Product
+    # Product 저장
     for item in base_list:
         fin_prdt_cd = item.get("fin_prdt_cd")
         if not fin_prdt_cd:
@@ -66,7 +79,7 @@ def upsert_deposit_products(result: dict) -> dict:
             defaults={
                 "bank_name": item.get("kor_co_nm"),
                 "name": item.get("fin_prdt_nm"),
-                "type": "DEPOSIT",
+                "type": db_type,  # DEPOSIT 또는 SAVINGS
                 "is_non_face_to_face": _is_non_face_to_face(item.get("join_way")),
                 "prefer_condition_text": item.get("spcl_cnd") or "",
                 "is_deposit_protected": False,
@@ -78,7 +91,7 @@ def upsert_deposit_products(result: dict) -> dict:
 
     rate_minmax = {}
 
-    # 2️⃣ ProductRate
+    # ProductRate 저장
     for opt in option_list:
         fin_prdt_cd = opt.get("fin_prdt_cd")
         product = product_map.get(fin_prdt_cd)
@@ -107,7 +120,7 @@ def upsert_deposit_products(result: dict) -> dict:
             max_rate if cur_max is None else max(cur_max, max_rate),
         )
 
-    # 3️⃣ Product 금리 반영
+    # Product에 금리 요약 정보 반영
     for fin_prdt_cd, (min_r, max_r) in rate_minmax.items():
         Product.objects.filter(fin_prdt_cd=fin_prdt_cd).update(
             base_rate=min_r or 0,
@@ -115,6 +128,7 @@ def upsert_deposit_products(result: dict) -> dict:
         )
 
     return {
+        "type": product_type,
         "products": len(base_list),
         "rates": len(option_list),
     }
