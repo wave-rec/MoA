@@ -23,7 +23,7 @@
           type="button"
         >
           <span class="bank-circle">
-            <span class="bank-initial">{{ bankInitial(b) }}</span>
+            <img :src="getBankLogo(b)" :alt="b" class="bank-circle-logo" />
           </span>
           <span class="bank-name">{{ shortBankName(b) }}</span>
         </button>
@@ -188,11 +188,14 @@
             안녕하세요 <span class="name">{{ userName }}님!</span>
           </h2>
           <p class="desc">
-            검색 결과 조건에 맞는 <span class="highlight">{{ results.length }}건</span>의
+            {{ welcomeMessage }}
+            <br />
+            검색 결과 조건에 맞는 <span class="highlight">{{ results.length || 0 }}건</span>의
             {{ productLabel }}을 발견했습니다.
           </p>
         </div>
-        <div class="result-controls" v-if="results.length">
+
+        <div class="result-controls" v-if="results.length > 0">
           <select v-model="sortOption" class="control-select" @change="applySorting">
             <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
               {{ opt.label }}
@@ -201,34 +204,55 @@
         </div>
       </div>
 
-      <div v-if="results.length" class="list">
+      <div v-if="results.length > 0" class="list">
         <article
           v-for="(item, idx) in results"
           :key="item.product_id"
           class="result-item"
+          :class="{ 'is-premium': item.is_recommended }"
           @click="goToDetail(item.product_id)"
         >
+          <div v-if="item.is_recommended" class="premium-tag">BEST</div>
           <div class="rank">{{ idx + 1 }}</div>
           <div class="item-content">
             <div class="item-left">
-              <div class="bank-icon">💳</div>
+              <div class="bank-icon">
+                <img
+                  :src="getBankLogo(item.bank_name)"
+                  :alt="item.bank_name"
+                  class="bank-logo-img"
+                  @error="handleImageError"
+                />
+                <span v-if="item.is_recommended" class="crown-badge">👑</span>
+              </div>
               <div class="info">
-                <div class="bank">{{ item.bank_name }}</div>
+                <div class="bank">{{ shortBankName(item.bank_name) }}</div>
                 <div class="prod">{{ item.name }}</div>
               </div>
             </div>
             <div class="rates">
-              <div class="max">최고 {{ formatRate(item.max_rate) }}%</div>
+              <div class="max" :class="{ 'highlight-rate': item.is_recommended }">
+                최고 {{ formatRate(item.max_rate) }}%
+              </div>
               <div class="base">기본 {{ formatRate(item.base_rate) }}%</div>
             </div>
           </div>
         </article>
       </div>
 
-      <div v-else-if="searched && results.length === 0" class="empty-container">
-        <span class="empty-icon">🔍</span>
-        <span class="empty-title">조건에 맞는 상품이 없습니다</span>
-        <span class="empty-subtitle">다른 조건을 선택해주세요</span>
+      <div v-else class="empty-state-wrapper">
+        <div v-if="loading" class="loading-container">
+          <span class="spinner-small"></span>
+          <p>상품 정보를 불러오고 있습니다...</p>
+        </div>
+        <div v-else-if="searched && results.length === 0" class="empty-container">
+          <span class="empty-icon">🔍</span>
+          <span class="empty-title">조건에 맞는 상품이 없습니다</span>
+          <span class="empty-subtitle">다른 조건을 선택해주세요</span>
+        </div>
+        <div v-else class="initial-placeholder">
+          <p>원하는 조건을 선택하고 검색하기를 눌러주세요</p>
+        </div>
       </div>
     </section>
   </main>
@@ -268,8 +292,17 @@ const sortOptions = [
 const banks = ref([])
 const selectedBank = ref('')
 const showAllBanks = ref(false)
+const isLogged = computed(() => !!authStore.user && !!authStore.accessToken)
 
-const userName = ref('회원')
+const userName = computed(() => {
+  return authStore.user?.name || '고객'
+})
+const welcomeMessage = computed(() => {
+  if (isLogged.value) {
+    return '고객님을 위한 맞춤형 분석 결과입니다.'
+  }
+  return '로그인하시면 나이대에 맞는 상품을 추천해 드려요!'
+})
 
 const isNonFaceToFace = ref(null)
 const isDepositProtected = ref(null)
@@ -331,12 +364,9 @@ watch(type, () => {
   targetMonths.value = 12
   targetAmount.value = 1000000
   amountDisplay.value = '1,000,000'
-  results.value = []
   searched.value = false
   error.value = ''
   matchingCount.value = null
-
-  checkMatchingCount()
 })
 
 watch([targetMonths, selectedBank, isNonFaceToFace, isDepositProtected], () => {
@@ -374,9 +404,19 @@ const selectBank = (b) => {
 const toggleAllBanks = () => (showAllBanks.value = !showAllBanks.value)
 const clearBank = () => (selectedBank.value = '')
 
-const bankInitial = (name) => name?.[0] ?? '?'
-const shortBankName = (name) =>
-  name?.replace('주식회사 ', '').replace('농협은행주식회사', '농협') ?? name
+const shortBankName = (name) => {
+  if (!name) return name
+
+  const nameMap = {
+    중소기업은행: 'IBK기업은행',
+    농협은행주식회사: 'NH농협은행',
+    '주식회사 하나은행': '하나은행',
+    '주식회사 카카오뱅크': '카카오뱅크',
+    '주식회사 케이뱅크': '케이뱅크',
+  }
+
+  return nameMap[name] || name.replace('주식회사 ', '')
+}
 
 const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 
@@ -397,11 +437,16 @@ const updateAmount = (e) => {
 }
 
 const applySorting = () => {
-  if (sortOption.value === 'max_rate') {
-    results.value.sort((a, b) => (b.max_rate || 0) - (a.max_rate || 0))
-  } else if (sortOption.value === 'base_rate') {
-    results.value.sort((a, b) => (b.base_rate || 0) - (a.base_rate || 0))
-  }
+  results.value.sort((a, b) => {
+    if (a.is_recommended !== b.is_recommended) {
+      return b.is_recommended ? 1 : -1
+    }
+    if (sortOption.value === 'max_rate') {
+      return (b.max_rate || 0) - (a.max_rate || 0)
+    } else {
+      return (b.base_rate || 0) - (a.base_rate || 0)
+    }
+  })
 }
 
 const goToDetail = (productId) => {
@@ -434,21 +479,21 @@ const recommend = async () => {
       limit: 20,
     }
 
-    if (selectedBank.value) {
-      payload.bank_name = selectedBank.value
+    if (selectedBank.value) payload.bank_name = selectedBank.value
+    if (isNonFaceToFace.value !== null) payload.is_non_face_to_face = isNonFaceToFace.value
+    if (isDepositProtected.value !== null) payload.is_deposit_protected = isDepositProtected.value
+
+    const config = {
+      headers: {},
     }
 
-    if (isNonFaceToFace.value !== null) {
-      payload.is_non_face_to_face = isNonFaceToFace.value
+    if (authStore.accessToken) {
+      config.headers.Authorization = `Token ${authStore.accessToken}`
     }
 
-    if (isDepositProtected.value !== null) {
-      payload.is_deposit_protected = isDepositProtected.value
-    }
+    console.log('요청 헤더 포함 payload:', payload)
 
-    console.log('요청 payload:', payload)
-
-    const res = await apiClient.post('/products/recommend/', payload)
+    const res = await apiClient.post('/products/recommend/', payload, config)
 
     let fetchedResults = res.data.results ?? []
 
@@ -459,24 +504,54 @@ const recommend = async () => {
     }
 
     results.value = fetchedResults
-
-    console.log('추천 결과:', results.value)
+    console.log(
+      '은행명 목록:',
+      results.value.map((r) => r.bank_name),
+    )
   } catch (e) {
     console.error('추천 조회 오류:', e)
-    const status = e?.response?.status
-
-    if (status === 401) {
-      error.value = '로그인이 필요합니다. 다시 로그인해주세요!'
-    } else if (status === 400) {
-      error.value = e?.response?.data?.detail ?? '입력 값을 확인해주세요.'
-    } else {
-      error.value = e?.response?.data?.detail ?? '추천 조회 중 오류가 발생했습니다.'
-    }
-
+    error.value = e?.response?.data?.detail || '조회 중 오류가 발생했습니다.'
     results.value = []
   } finally {
     loading.value = false
   }
+}
+
+const getBankLogo = (bankName) => {
+  const logoMap = {
+    국민은행: '/assets/banks/kb.png',
+    신한은행: '/assets/banks/shinhan.png',
+    우리은행: '/assets/banks/woori.png',
+    NH농협은행: '/assets/banks/nh.png',
+    농협은행주식회사: '/assets/banks/nh.png',
+    하나은행: '/assets/banks/hana.png',
+    '주식회사 하나은행': '/assets/banks/hana.png',
+    IBK기업은행: '/assets/banks/ibk.png',
+    중소기업은행: '/assets/banks/ibk.png',
+    '주식회사 기업은행': '/assets/banks/ibk.png',
+    Sh수협은행: '/assets/banks/sh.png',
+    수협은행: '/assets/banks/sh.png',
+    KDB산업은행: '/assets/banks/kdb.png',
+    한국산업은행: '/assets/banks/kdb.png',
+    한국씨티은행: '/assets/banks/city.png',
+    한국스탠다드차타드은행: '/assets/banks/sc.png',
+    SC제일은행: '/assets/banks/sc.png',
+    부산은행: '/assets/banks/busan.png',
+    대구은행: '/assets/banks/daegu.png',
+    경남은행: '/assets/banks/busan.png',
+    광주은행: '/assets/banks/kjb.png',
+    전북은행: '/assets/banks/jb.png',
+    제주은행: '/assets/banks/jj.png',
+    토스뱅크: '/assets/banks/toss.png',
+    카카오뱅크: '/assets/banks/kakao.png',
+    '주식회사 카카오뱅크': '/assets/banks/kakao.png',
+    '주식회사 케이뱅크': '/assets/banks/k.png',
+  }
+  return logoMap[bankName] || '/assets/banks/default.png'
+}
+
+const handleImageError = (e) => {
+  e.target.src = '/assets/banks/default.png'
 }
 </script>
 
@@ -503,6 +578,12 @@ const recommend = async () => {
   padding: 22px;
 }
 
+.card-result {
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+}
+
 .type-tabs {
   width: 147px;
   margin: 0 auto 16px;
@@ -513,6 +594,10 @@ const recommend = async () => {
   display: flex;
   gap: 6px;
   justify-content: center;
+}
+
+.result-header {
+  flex-shrink: 0;
 }
 
 .tab {
@@ -559,6 +644,7 @@ const recommend = async () => {
   place-items: center;
   background: white;
   transition: all 0.2s;
+  overflow: hidden;
 }
 
 .bank-btn.selected .bank-circle {
@@ -578,6 +664,13 @@ const recommend = async () => {
   font-size: 20px;
 }
 
+.bank-circle-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
 .bank-name {
   font-size: 12px;
   font-weight: 700;
@@ -590,6 +683,40 @@ const recommend = async () => {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
+}
+
+.bank-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.bank-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.crown-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  font-size: 16px;
+  background: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .match-info {
@@ -884,17 +1011,6 @@ const recommend = async () => {
   gap: 12px;
 }
 
-.bank-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  display: grid;
-  place-items: center;
-  font-size: 24px;
-}
-
 .info {
   display: flex;
   flex-direction: column;
@@ -932,10 +1048,12 @@ const recommend = async () => {
 
 .empty-container {
   text-align: center;
+  min-height: 200;
   padding: 60px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 12px;
 }
 
@@ -953,5 +1071,48 @@ const recommend = async () => {
 .empty-subtitle {
   font-size: 14px;
   color: #6b7280;
+}
+
+.result-item.is-premium {
+  border: 1px solid #6393f2;
+  background: linear-gradient(to right, #ffffff, #f0f7ff);
+}
+
+.premium-tag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #6393f2;
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.highlight-rate {
+  color: #1d4ed8 !important;
+  font-size: 20px !important;
+}
+
+.empty-state-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 40px 20px;
+}
+
+.initial-placeholder {
+  text-align: center;
+}
+
+.initial-placeholder p {
+  font-size: 15px;
+  color: #9ca3af;
+  margin: 0;
+  font-weight: 500;
+  font-family: 'Pretendard', sans-serif;
 }
 </style>
