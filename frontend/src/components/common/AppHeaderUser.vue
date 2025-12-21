@@ -17,8 +17,14 @@
       <!-- 데스크탑용: 검색 + 홈 + 프로필 -->
       <div class="right-section desktop-only">
         <div class="search-box">
-          <input type="text" placeholder="검색" class="search-input" />
-          <button class="search-button">
+          <input
+            v-model="searchQuery"
+            @keyup.enter="handleSearch"
+            type="text"
+            placeholder="Youtube에서 검색해보세요"
+            class="search-input"
+          />
+          <button @click="handleSearch" class="search-button">
             <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 d="M21 21l-4.35-4.35m0 0A6.5 6.5 0 105.5 5.5a6.5 6.5 0 0011.15 11.15z"
@@ -79,6 +85,7 @@ import { ref } from 'vue'
 import logoSrc from '@/assets/logo-moa.png'
 import { useRouter } from 'vue-router'
 const router = useRouter()
+const searchQuery = ref('')
 
 const isMenuOpen = ref(false)
 const toggleMenu = () => {
@@ -97,8 +104,19 @@ const goMyPage = () => {
   router.push({ name: 'mypage' })
 }
 const goPosts = () => {
-  isMenuOpen.value = false   
+  isMenuOpen.value = false
   router.push({ name: 'posts' })
+}
+
+const handleSearch = () => {
+  if (!searchQuery.value.trim()) return
+
+  router.push({
+    name: 'YoutubeSearch',
+    query: { q: searchQuery.value },
+  })
+
+  searchQuery.value = ''
 }
 </script>
 
