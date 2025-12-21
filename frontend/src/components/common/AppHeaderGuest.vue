@@ -101,7 +101,7 @@ const goRecommend = () => {
 
 const goExchange = () => {
   isMenuOpen.value = false
-  router.push({ name: 'exchange' })
+  router.push({ name: 'commodity' })
 }
 
 const goBanks = () => {
