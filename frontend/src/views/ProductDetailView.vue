@@ -21,7 +21,7 @@
             <img :src="getBankLogo(product.bank_name)" :alt="product.bank_name" />
           </div>
           <div class="product-info">
-            <h2 class="bank-name">{{ product.bank_name }}</h2>
+            <h2 class="bank-name">{{ shortBankName(product.bank_name) }}</h2>
             <h1 class="product-name">{{ product.name }}</h1>
             <div class="tags">
               <span class="tag tag-primary">{{ productTypeLabel }}</span>
@@ -47,13 +47,18 @@
           <span class="ai-badge">Beta</span>
         </div>
 
-        <div v-if="aiLoading" class="ai-loading">
+        <div v-if="!authStore.accessToken" class="ai-login-prompt">
+          <p>로그인 후 AI의 스마트한 분석 결과를 확인해보세요!</p>
+          <button class="login-mini-btn" @click="router.push('/login')">로그인하러 가기</button>
+        </div>
+
+        <div v-else-if="aiLoading" class="ai-loading">
           <div class="ai-spinner"></div>
           <p>AI가 상품을 분석하고 있습니다...</p>
         </div>
 
         <div v-else-if="aiError" class="ai-error">
-          <p>{{ aiError }}</p>
+          <p>{{ aiError || '분석 정보를 불러오지 못했습니다.' }}</p>
           <button @click="fetchAIAnalysis" class="retry-btn">다시 시도</button>
         </div>
 
@@ -185,6 +190,7 @@ import apiClient from '@/api/client'
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const isLogged = computed(() => !!authStore.accessToken)
 
 const product = ref(null)
 const loading = ref(true)
@@ -316,28 +322,55 @@ const fetchAIAnalysis = async () => {
 
   try {
     const productId = route.params.id
+    const config = { headers: {} }
 
-    // 백엔드 API 호출
-    const res = await apiClient.post(`/products/${productId}/ai-analysis/`, {
-      amount: targetAmount.value,
-      months: targetMonths.value,
-    })
+    if (authStore.accessToken) {
+      config.headers.Authorization = `Token ${authStore.accessToken}`
+    }
 
-    // 응답 데이터 설정
+    const res = await apiClient.post(
+      `/products/${productId}/ai-analysis/`,
+      {
+        amount: targetAmount.value,
+        months: targetMonths.value,
+      },
+      config,
+    )
+
     const data = res.data
-    aiSummary.value = data.summary || '이 상품은 고객님께 적합한 금융 상품입니다.'
-    aiDetailedAnalysis.value =
-      data.detailed_analysis || '상품 조건을 확인하시고 가입을 고려해보세요.'
-    aiReasons.value = data.reasons || ['경쟁력 있는 금리', '안정적인 운영', '편리한 가입']
-    aiWarning.value = data.warning || '약관을 꼼꼼히 확인하시기 바랍니다.'
+    const refineText = (text, fallback) => {
+      if (!text) return fallback
+      let t = text.trim()
+      t = t.replace(/\*\*/g, '')
+      const userName = authStore.userNickname || '고객'
+      t = t.replace(/고객님/g, `${userName}님`)
+
+      t = t
+        .replace(/잖아요/g, '입니다')
+        .replace(/해요/g, '합니다')
+        .replace(/시기이기도 합니다/g, '시기입니다')
+
+      if (t.endsWith('최대')) t += ' 금리 혜택을 제공합니다.'
+      if (!/[.!?]$/.test(t)) t += '.'
+
+      return t
+    }
+
+    const userName = authStore.userNickname || '고객'
+
+    aiSummary.value = refineText(data.summary, `${userName}님을 위한 최적의 금융 분석 결과입니다.`)
+    aiDetailedAnalysis.value = refineText(data.detailed_analysis, '상세 분석 정보를 준비 중입니다.')
+    aiWarning.value = refineText(data.warning, '가입 전 약관을 반드시 확인하시기 바랍니다.')
+
+    aiReasons.value =
+      data.reasons?.length > 0
+        ? data.reasons.map((r) => refineText(r))
+        : ['경쟁력 있는 금리', '안정적인 운영', '편리한 가입']
   } catch (e) {
     console.error('AI 분석 조회 오류:', e)
     const status = e?.response?.status
-
-    if (status === 404) {
-      aiError.value = '상품을 찾을 수 없습니다.'
-    } else if (status === 500) {
-      aiError.value = 'AI 분석 서비스에 일시적인 문제가 발생했습니다.'
+    if (status === 401) {
+      aiError.value = '로그인 세션이 만료되었습니다. 다시 로그인해주세요.'
     } else {
       aiError.value = e?.response?.data?.detail || 'AI 분석을 불러오는데 실패했습니다.'
     }
@@ -395,6 +428,24 @@ const handleSubscribe = async () => {
   } finally {
     subscribing.value = false
   }
+}
+
+onMounted(() => {
+  fetchProductDetail()
+})
+
+const shortBankName = (name) => {
+  if (!name) return name
+
+  const nameMap = {
+    중소기업은행: 'IBK기업은행',
+    농협은행주식회사: 'NH농협은행',
+    '주식회사 하나은행': '하나은행',
+    '주식회사 카카오뱅크': '카카오뱅크',
+    '주식회사 케이뱅크': '케이뱅크',
+  }
+
+  return nameMap[name] || name.replace('주식회사 ', '')
 }
 
 onMounted(() => {
@@ -616,7 +667,10 @@ onMounted(() => {
 }
 
 .ai-error {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   padding: 20px;
 }
 
@@ -670,7 +724,41 @@ onMounted(() => {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
 }
+.ai-login-prompt {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 20px;
+  text-align: center;
+}
 
+.ai-login-prompt p {
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  opacity: 0.95;
+}
+
+.login-mini-btn {
+  background: white;
+  color: #667eea;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.login-mini-btn:hover {
+  transform: translateY(-2px);
+  background: #f8faff;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
 /* 정보 카드 행 */
 .info-cards-row {
   display: grid;
@@ -905,10 +993,10 @@ onMounted(() => {
   background: white;
   border-radius: 20px;
   max-width: 600px;
-  width: 100%;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-height: 85vh;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .modal-header {
@@ -949,6 +1037,8 @@ onMounted(() => {
 
 .modal-body {
   padding: 24px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .ai-analysis-section {
@@ -966,6 +1056,9 @@ onMounted(() => {
   line-height: 1.8;
   color: #4a5568;
   margin: 0;
+  word-break: keep-all;
+  white-space: pre-wrap;
+  overflow: visible;
 }
 
 .ai-reasons {
