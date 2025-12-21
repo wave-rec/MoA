@@ -10,6 +10,7 @@ import RecommendView from '@/views/RecommendView.vue'
 import PostListView from '@/views/PostListView.vue'
 import PostCreateView from '@/views/PostCreateView.vue'
 import PostDetailView from '@/views/PostDetailView.vue'
+import ProductDetailView from '@/views/ProductDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -68,6 +69,11 @@ const router = createRouter({
           name: 'post-detail',
           component: PostDetailView,
           props: true,
+        },
+        {
+          path: '/products/:id',
+          name: 'ProductDetail',
+          component: ProductDetailView,
         },
       ],
     },
