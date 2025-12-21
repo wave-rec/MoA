@@ -1,17 +1,20 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 import requests
-
+from django.conf import settings
+import json
+import re
 from .models import Product, Favorite, ProductRate, Subscription
-from .serializers import ProductListSerializer, ProductDetailSerializer, RecommendRequestSerializer, RecommendResponseSerializer
+from .serializers import ProductListSerializer, ProductDetailSerializer, RecommendRequestSerializer, RecommendResponseSerializer, AIAnalysisRequestSerializer
 
 
 # ============================================================
 # - 상품 목록 조회 API
 # ============================================================
 @api_view(["GET"])
+@permission_classes([AllowAny])
 def product_list(request):
     qs = Product.objects.all()
 
@@ -76,6 +79,7 @@ def product_list(request):
 # - 상품 상세 조회 API
 # ============================================================
 @api_view(["GET"])
+@permission_classes([AllowAny])
 def product_detail(request, product_id):
     product = Product.objects.prefetch_related("rates").filter(id=product_id).first()
 
@@ -126,11 +130,13 @@ def _score(product: Product, months: int, want_nftf, want_dp) -> int:
 
 
 # ============================================================
-# - 조건 기반 상품 추천 API
+# - 조건 기반 상품 추천 및 검색 API
 # ============================================================
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny]) 
 def product_recommend(request):
+    is_logged_in = request.user.is_authenticated
+    user_age = getattr(request.user, 'age', None) if is_logged_in else None
     req = RecommendRequestSerializer(data=request.data)
     req.is_valid(raise_exception=True)
     v = req.validated_data
@@ -138,7 +144,6 @@ def product_recommend(request):
     target_amount = v["target_amount"]
     target_months = v["target_months"]
     ptype = v["type"].upper()
-
     want_nftf = v.get("is_non_face_to_face", None)
     want_dp = v.get("is_deposit_protected", None)
     bank_name = v.get("bank_name")
@@ -152,44 +157,49 @@ def product_recommend(request):
 
     if want_nftf is not None:
         qs = qs.filter(is_non_face_to_face=want_nftf)
-
     if want_dp is not None:
         qs = qs.filter(is_deposit_protected=want_dp)
-
     if bank_name:
         qs = qs.filter(bank_name=bank_name)
 
-    qs = qs.order_by("-max_rate", "-base_rate")[:limit]
+    if request.data.get('count_only') == True:
+        return Response({'count': qs.count()}, status=status.HTTP_200_OK)
 
+
+    qs = qs.order_by("-max_rate", "-base_rate")[:limit]
+    
     results = []
+    
+    is_logged_in = request.user.is_authenticated
+    user_age = request.user.age if is_logged_in else None
+
     for p in qs:
         rate_obj = next((r for r in p.rates.all() if r.save_terms_months == target_months), None)
-
         base_rate = rate_obj.base_rate if rate_obj and rate_obj.base_rate is not None else p.base_rate
         max_rate = rate_obj.max_rate if rate_obj and rate_obj.max_rate is not None else p.max_rate
-
         use_rate = max_rate or base_rate or 0
+
+        is_recommended = False
+        if is_logged_in and user_age:
+            age_match = (user_age < 40 and p.is_non_face_to_face) or (user_age >= 40 and p.is_deposit_protected)
+            
+            if age_match and (max_rate or 0) >= 3.0: 
+                is_recommended = True
 
         results.append({
             "product_id": p.id,
-            "fin_prdt_cd": p.fin_prdt_cd,
             "bank_name": p.bank_name,
             "name": p.name,
             "base_rate": base_rate,
             "max_rate": max_rate,
-            "match_score": _score(p, target_months, want_nftf, want_dp),  # ✅ 인자 정상
+            "is_recommended": is_recommended,
+            "match_score": _score(p, target_months, want_nftf, want_dp),
             "expected_amount": _calc_expected_amount(target_amount, target_months, use_rate),
         })
 
-    results.sort(
-        key=lambda x: (x["match_score"], x["max_rate"] or 0, x["base_rate"] or 0),
-        reverse=True
-    )
+    results.sort(key=lambda x: (x["is_recommended"], x["match_score"]), reverse=True)
 
-    results = results[:limit]
-
-    res = RecommendResponseSerializer({"results": results})
-    return Response(res.data, status=status.HTTP_200_OK)
+    return Response({"results": results[:limit]}, status=status.HTTP_200_OK)
 
 # ============================================================
 # - 찜 목록 조회 API (마이페이지용)
@@ -213,15 +223,26 @@ def favorite_list(request):
 # ============================================================
 @api_view(["GET"])
 def bank_list(request):
-    banks = (
-       Product.objects
+    priority_banks = ['국민은행', '신한은행', '중소기업은행', '우리은행', '농협은행주식회사']
+    
+    all_banks = list(
+        Product.objects
         .exclude(bank_name__isnull=True)
         .exclude(bank_name__exact="")
         .values_list("bank_name", flat=True)
         .distinct()
-        .order_by("bank_name")
     )
-    return Response({"banks": list(banks)}) 
+    
+    sorted_banks = []
+    for bank in priority_banks:
+        if bank in all_banks:
+            sorted_banks.append(bank)
+    
+    for bank in sorted(all_banks):
+        if bank not in sorted_banks:
+            sorted_banks.append(bank)
+    
+    return Response({"banks": sorted_banks})
 
 @api_view(["POST", "DELETE"])
 @permission_classes([IsAuthenticated])
@@ -255,32 +276,24 @@ def subscription_list(request):
     serializer = ProductListSerializer(products, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
-# products/views.py에 추가할 함수
-
-from django.conf import settings
-import requests
-import json
-import re
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated]) 
 def get_ai_analysis(request, product_id):
-    # 상품 조회
     try:
         product = Product.objects.prefetch_related('rates').get(id=product_id)
     except Product.DoesNotExist:
-        return Response(
-            {"detail": "존재하지 않는 상품입니다."}, 
-            status=status.HTTP_404_NOT_FOUND
-        )
+        return Response({"detail": "존재하지 않는 상품입니다."}, status=404)
     
-    # 요청 데이터 검증
-    from .serializers import AIAnalysisRequestSerializer
     serializer = AIAnalysisRequestSerializer(data=request.data)
     if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=400)
     
     amount = serializer.validated_data['amount']
     months = serializer.validated_data['months']
+
+    user = request.user
+    user_info = f"성함: {user.name or '고객'}, 연령: {user.age or '알 수 없음'}세"
     
     # GMS API Key 확인
     gms_key = settings.GMS_API_KEY
@@ -301,36 +314,37 @@ def get_ai_analysis(request, product_id):
     product_type = "예금" if product.type == "DEPOSIT" else "적금"
     
     # 프롬프트 생성
+# 프롬프트 생성 (사용자의 나이 페르소나 강화)
     prompt = f"""
-다음 금융 상품을 분석하고 사용자에게 맞춤 추천을 제공해주세요:
+당신은 대한민국 최고의 금융 자산관리 전문가입니다. 
+다음 사용자의 [연령대]와 [투자 목표]를 분석하여, 왜 이 상품이 {user.name}님께 '강력 추천'되는지 논리적이고 친절하게 설명해주세요.
 
-[상품 정보]
-- 상품명: {product.name}
-- 은행: {product.bank_name}
-- 상품 유형: {product_type}
-- 기본 금리: {base_rate:.2f}%
-- 최고 금리: {max_rate:.2f}%
-- 비대면 가입: {"가능" if product.is_non_face_to_face else "불가능"}
-- 예금자 보호: {"보호" if product.is_deposit_protected else "미보호"}
-- 우대조건: {product.prefer_condition_text if product.prefer_condition_text else "없음"}
+[사용자 프로필]
+- 성함: {user.name}님
+- 연령: {user.age}세 (이 연령대의 일반적인 재테크 관심사와 생애 주기를 고려할 것)
 
-[사용자 정보]
+[사용자 투자 계획]
 - 목표 금액: {amount:,}원
 - 가입 기간: {months}개월
-- 예상 수령액 (기본금리): {base_amount:,}원
-- 예상 수령액 (최고금리): {max_amount:,}원
+- 예상 수령액 (최대): {max_amount:,}원
 
-다음 형식으로 정확하게 응답해주세요:
+[분석 대상 상품]
+- 상품명: {product.name} ({product.bank_name})
+- 금리: 기본 {base_rate:.2f}% / 최고 {max_rate:.2f}%
+- 특징: {"비대면 가입 가능" if product.is_non_face_to_face else "영업점 방문 필요"}, {"예금자 보호 상품" if product.is_deposit_protected else "보호 미대상"}
+- 우대조건: {product.prefer_condition_text if product.prefer_condition_text else "기본 조건 충족 시 제공"}
 
-1. 한줄평: (이 상품의 핵심 장점을 한 문장으로, 50자 이내)
-2. 상세 분석: (상품의 장단점을 객관적으로 분석, 150-200자)
+다음 형식으로 답변해주세요:
+
+1. 한줄평: ({user.age}세 {user.name}님의 인생 단계에 맞춰 이 상품이 주는 핵심 가치를 50자 이내로 표현)
+2. 상세 분석: ({user.age}대 사용자가 가장 고민하는 자산 관리 포인트와 이 상품의 금리/안정성을 연결하여 150-200자로 분석)
 3. 추천 이유:
-- 첫 번째 이유 (한 문장)
-- 두 번째 이유 (한 문장)
-- 세 번째 이유 (한 문장)
-4. 주의사항: (가입 전 주의할 점 1-2문장)
+- {user.age}세라는 연령대에 이 상품이 필요한 구체적인 이유 (예: 사회초년생의 종잣돈 마련, 노후 대비 안정성 등)
+- 설정하신 {amount:,}원의 목표를 달성하기 위한 이 상품만의 금리 경쟁력
+- 가입 편의성 및 {user.name}님의 투자 성향에 맞는 부가 혜택
+4. 주의사항: ({user.age}세 사용자가 자금 운용 시 놓치기 쉬운 점 1-2문장)
 
-친근하고 전문적인 톤으로 작성해주세요.
+전문적이면서도 옆에서 직접 상담해주는 듯한 다정한 말투(~해요, ~입니다)를 사용해주세요.
 """
     
     # GMS API 호출
