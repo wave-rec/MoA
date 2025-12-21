@@ -11,6 +11,7 @@ import PostListView from '@/views/PostListView.vue'
 import PostCreateView from '@/views/PostCreateView.vue'
 import PostDetailView from '@/views/PostDetailView.vue'
 import YoutubeSearchview from '@/views/YoutubeSearchview.vue'
+import ProductDetailView from '@/views/ProductDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -74,6 +75,11 @@ const router = createRouter({
           path: '/youtube-search',
           name: 'YoutubeSearch',
           component: YoutubeSearchview,
+        },
+        {
+          path: '/products/:id',
+          name: 'ProductDetail',
+          component: ProductDetailView,
         },
       ],
     },

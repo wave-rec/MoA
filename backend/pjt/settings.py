@@ -162,3 +162,4 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
 
+GMS_API_KEY = os.getenv("GMS_API_KEY", "")

@@ -82,3 +82,13 @@ class ProductRecommendRequestSerializer(serializers.Serializer):
     )
 
     limit = serializers.IntegerField(required=False, min_value=1, max_value=50, default=10)
+
+class AIAnalysisRequestSerializer(serializers.Serializer):
+    amount = serializers.IntegerField(min_value=1000000, required=True)
+    months = serializers.IntegerField(min_value=1, max_value=60, required=True)
+
+class AIAnalysisResponseSerializer(serializers.Serializer):
+    summary = serializers.CharField()
+    detailed_analysis = serializers.CharField()
+    reasons = serializers.ListField(child=serializers.CharField())
+    warning = serializers.CharField()

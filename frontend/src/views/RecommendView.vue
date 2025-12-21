@@ -56,7 +56,20 @@
 
     <!-- 카드 2: 조건 -->
     <section class="card card-filter">
-      <!-- 기간 - 버튼 방식 -->
+      <!-- 매칭 상품 개수 표시 -->
+      <div v-if="matchingCount !== null && targetAmount >= 1000000" class="match-info">
+        <span v-if="countLoading" class="match-loading">
+          <span class="spinner-small"></span> 확인 중...
+        </span>
+        <span v-else-if="matchingCount > 0" class="match-success">
+          ✓ 현재 조건에 맞는 상품 <strong>{{ matchingCount }}개</strong>
+        </span>
+        <span v-else class="match-warning">
+          ⚠️ 조건에 맞는 상품이 없습니다. 다른 조건을 선택해보세요.
+        </span>
+      </div>
+
+      <!-- 기간 -->
       <div class="row">
         <div class="label">기간</div>
         <div class="control">
@@ -82,48 +95,11 @@
             type="text"
             v-model="amountDisplay"
             @input="updateAmount"
-            placeholder="금액을 입력해주세요. (100만원 이상부터 가능합니다.)"
+            @keyup.enter="checkMatchingCount"
+            placeholder="100만원 이상"
           />
-          <button class="mini" type="button" @click="recommend" :disabled="loading">확인</button>
-        </div>
-      </div>
-
-      <!-- 상품유형 (적금일 때만 표시) -->
-      <div class="row" v-if="type === 'savings'">
-        <div class="label">상품유형</div>
-        <div class="control">
-          <button
-            class="pill"
-            :class="{ selected: savingsType === 'free' }"
-            @click="savingsType = 'free'"
-            type="button"
-          >
-            자유적립
-          </button>
-          <button
-            class="pill"
-            :class="{ selected: savingsType === 'fixed' }"
-            @click="savingsType = 'fixed'"
-            type="button"
-          >
-            정액적립
-          </button>
-        </div>
-      </div>
-
-      <!-- 우대조건 -->
-      <div class="row">
-        <div class="label">우대조건</div>
-        <div class="control">
-          <button
-            v-for="pref in preferentialOptions"
-            :key="pref.value"
-            class="pill"
-            :class="{ selected: selectedPreferential.includes(pref.value) }"
-            @click="togglePreferential(pref.value)"
-            type="button"
-          >
-            {{ pref.label }}
+          <button class="mini" type="button" @click="checkMatchingCount" :disabled="countLoading">
+            확인
           </button>
         </div>
       </div>
@@ -191,7 +167,12 @@
       </div>
 
       <div class="actions">
-        <button class="search" @click="recommend" :disabled="loading" type="button">
+        <button
+          class="search"
+          @click="recommend"
+          :disabled="loading || (matchingCount === 0 && matchingCount !== null)"
+          type="button"
+        >
           {{ loading ? '조회중...' : '검색하기' }}
         </button>
       </div>
@@ -221,7 +202,12 @@
       </div>
 
       <div v-if="results.length" class="list">
-        <article v-for="(item, idx) in results" :key="item.product_id" class="result-item">
+        <article
+          v-for="(item, idx) in results"
+          :key="item.product_id"
+          class="result-item"
+          @click="goToDetail(item.product_id)"
+        >
           <div class="rank">{{ idx + 1 }}</div>
           <div class="item-content">
             <div class="item-left">
@@ -239,19 +225,23 @@
         </article>
       </div>
 
-      <p v-else-if="searched" class="empty">
-        조건에 맞는 상품이 없습니다. 조건을 바꿔서 다시 시도해주세요!
-      </p>
+      <div v-else-if="searched && results.length === 0" class="empty-container">
+        <span class="empty-icon">🔍</span>
+        <span class="empty-title">조건에 맞는 상품이 없습니다</span>
+        <span class="empty-subtitle">다른 조건을 선택해주세요</span>
+      </div>
     </section>
   </main>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import apiClient from '@/api/client'
 import { fetchBanks } from '@/api/products'
 import { useAuthStore } from '@/stores/auth'
 
+const router = useRouter()
 const authStore = useAuthStore()
 
 const type = ref('deposit')
@@ -259,7 +249,6 @@ const targetAmount = ref(1000000)
 const targetMonths = ref(12)
 const amountDisplay = ref('1,000,000')
 
-// 개월 선택 옵션
 const monthOptions = [1, 3, 6, 12, 24, 36]
 
 const results = ref([])
@@ -267,9 +256,10 @@ const loading = ref(false)
 const error = ref('')
 const searched = ref(false)
 
-// 정렬 옵션
-const sortOption = ref('max_rate')
+const matchingCount = ref(null)
+const countLoading = ref(false)
 
+const sortOption = ref('max_rate')
 const sortOptions = [
   { value: 'max_rate', label: '최고금리순' },
   { value: 'base_rate', label: '기본금리순' },
@@ -279,27 +269,91 @@ const banks = ref([])
 const selectedBank = ref('')
 const showAllBanks = ref(false)
 
-// 사용자 이름 (임시 고정값)
 const userName = ref('회원')
 
-// UI용 필터들
-const savingsType = ref('free')
-const selectedPreferential = ref([])
-
-// 백엔드 연동 필터
 const isNonFaceToFace = ref(null)
 const isDepositProtected = ref(null)
 
-const preferentialOptions = [
-  { value: 'transfer', label: '금액이체' },
-  { value: 'auto', label: '자동이체' },
-  { value: 'card', label: '카드사용' },
-  { value: 'first', label: '첫 거래' },
-  { value: 'none', label: '제외' },
-]
-
 const displayBanks = computed(() => banks.value.slice(0, 5))
 const productLabel = computed(() => (type.value === 'deposit' ? '예금' : '적금'))
+
+const checkMatchingCount = async () => {
+  console.log('[개수 체크] 시작 - 금액:', targetAmount.value)
+
+  if (targetAmount.value < 1000000) {
+    console.log('[개수 체크] 금액 부족 (100만원 미만)')
+    matchingCount.value = null
+    return
+  }
+
+  countLoading.value = true
+
+  try {
+    const payload = {
+      type: type.value,
+      target_amount: targetAmount.value,
+      target_months: targetMonths.value,
+      limit: 20,
+    }
+
+    if (selectedBank.value) {
+      payload.bank_name = selectedBank.value
+    }
+
+    if (isNonFaceToFace.value !== null) {
+      payload.is_non_face_to_face = isNonFaceToFace.value
+    }
+
+    if (isDepositProtected.value !== null) {
+      payload.is_deposit_protected = isDepositProtected.value
+    }
+
+    console.log('[개수 체크] 요청 payload:', payload)
+
+    const res = await apiClient.post('/products/recommend/', payload)
+    matchingCount.value = res.data.results?.length || 0
+
+    console.log('[개수 체크] 결과:', matchingCount.value, '개')
+  } catch (e) {
+    console.error('[개수 체크] 오류:', e)
+    console.error('[개수 체크] 응답:', e?.response?.data)
+    matchingCount.value = null
+  } finally {
+    countLoading.value = false
+  }
+}
+
+watch(type, () => {
+  selectedBank.value = ''
+  isNonFaceToFace.value = null
+  isDepositProtected.value = null
+  showAllBanks.value = false
+  targetMonths.value = 12
+  targetAmount.value = 1000000
+  amountDisplay.value = '1,000,000'
+  results.value = []
+  searched.value = false
+  error.value = ''
+  matchingCount.value = null
+
+  checkMatchingCount()
+})
+
+watch([targetMonths, selectedBank, isNonFaceToFace, isDepositProtected], () => {
+  checkMatchingCount()
+})
+
+let amountTimer = null
+watch(targetAmount, (newVal) => {
+  if (newVal >= 1000000) {
+    clearTimeout(amountTimer)
+    amountTimer = setTimeout(() => {
+      checkMatchingCount()
+    }, 500)
+  } else {
+    matchingCount.value = null
+  }
+})
 
 onMounted(async () => {
   try {
@@ -308,6 +362,8 @@ onMounted(async () => {
   } catch (e) {
     console.error('은행 목록 조회 실패:', e)
   }
+
+  checkMatchingCount()
 })
 
 const selectBank = (b) => {
@@ -321,12 +377,6 @@ const clearBank = () => (selectedBank.value = '')
 const bankInitial = (name) => name?.[0] ?? '?'
 const shortBankName = (name) =>
   name?.replace('주식회사 ', '').replace('농협은행주식회사', '농협') ?? name
-
-const togglePreferential = (value) => {
-  const index = selectedPreferential.value.indexOf(value)
-  if (index > -1) selectedPreferential.value.splice(index, 1)
-  else selectedPreferential.value.push(value)
-}
 
 const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 
@@ -346,7 +396,6 @@ const updateAmount = (e) => {
   }
 }
 
-// 정렬 적용
 const applySorting = () => {
   if (sortOption.value === 'max_rate') {
     results.value.sort((a, b) => (b.max_rate || 0) - (a.max_rate || 0))
@@ -355,11 +404,14 @@ const applySorting = () => {
   }
 }
 
-// 상품 상세 페이지로 이동
 const goToDetail = (productId) => {
-  //라우터 설정 후 활성화 예정
-  console.log('상품 상세 페이지로 이동:', productId)
-  // router.push(`/products/${productId}`)
+  router.push({
+    path: `/products/${productId}`,
+    query: {
+      amount: targetAmount.value,
+      months: targetMonths.value,
+    },
+  })
 }
 
 const recommend = async () => {
@@ -368,7 +420,6 @@ const recommend = async () => {
   searched.value = true
 
   try {
-    // 금액 검증
     if (!targetAmount.value || targetAmount.value < 1000000) {
       error.value = '금액은 100만원 이상부터 가능합니다.'
       results.value = []
@@ -376,15 +427,6 @@ const recommend = async () => {
       return
     }
 
-    // 적금 데이터가 없을 경우 알림
-    if (type.value === 'savings') {
-      error.value = '현재 적금 상품 데이터가 준비 중입니다. 예금 상품을 이용해주세요.'
-      results.value = []
-      loading.value = false
-      return
-    }
-
-    // 백엔드 API payload 구조
     const payload = {
       type: type.value,
       target_amount: targetAmount.value,
@@ -392,7 +434,6 @@ const recommend = async () => {
       limit: 20,
     }
 
-    // 선택적 필터 추가
     if (selectedBank.value) {
       payload.bank_name = selectedBank.value
     }
@@ -551,6 +592,57 @@ const recommend = async () => {
   justify-content: center;
 }
 
+.match-info {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px solid #bae6fd;
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(99, 147, 242, 0.1);
+}
+
+.match-loading {
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid #e5e7eb;
+  border-top-color: #6393f2;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.match-success {
+  color: #059669;
+  display: block;
+}
+
+.match-success strong {
+  color: #047857;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.match-warning {
+  color: #dc2626;
+  display: block;
+}
+
 .row {
   display: grid;
   grid-template-columns: 92px 1fr;
@@ -669,14 +761,14 @@ const recommend = async () => {
   transition: all 0.2s;
 }
 
-.search:hover {
+.search:hover:not(:disabled) {
   background: #1f2937;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .search:disabled {
-  opacity: 0.6;
+  opacity: 0.4;
   cursor: not-allowed;
   transform: none;
 }
@@ -745,22 +837,6 @@ const recommend = async () => {
 .highlight {
   color: #6393f2;
   font-weight: 700;
-}
-
-.details-btn {
-  border: 0;
-  background: transparent;
-  color: #6393f2;
-  font-weight: 700;
-  cursor: pointer;
-  font-size: 13px;
-  padding: 8px 0;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.details-btn:hover {
-  color: #4f7de0;
 }
 
 .list {
@@ -854,11 +930,28 @@ const recommend = async () => {
   font-weight: 600;
 }
 
-.empty {
-  color: #9ca3af;
-  margin-top: 10px;
+.empty-container {
   text-align: center;
-  padding: 40px 0;
-  font-weight: 600;
+  padding: 60px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.empty-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.empty-subtitle {
+  font-size: 14px;
+  color: #6b7280;
 }
 </style>
