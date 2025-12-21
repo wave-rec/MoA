@@ -8,8 +8,8 @@
 
       <!-- 데스크톱 네비게이션 -->
       <nav class="navigation desktop-only">
-        <button class="nav-link">모아의 모든 것</button>
-        <button class="nav-link">예금 적금 추천</button>
+        <button class="nav-link" @click="goRecommend">예금 적금 추천</button>
+        <button class="nav-link" @click="goExchange">금•은 시세 확인</button>
         <button class="nav-link" @click="goBanks">은행 지점 찾기</button>
         <button class="nav-link" @click="goPosts">게시판</button>
       </nav>
@@ -56,8 +56,8 @@
     <transition name="mobile-menu-fade">
       <div v-if="isMenuOpen" class="mobile-menu mobile-only">
         <nav class="mobile-nav">
-          <button class="mobile-nav-link">모아의 모든 것</button>
-          <button class="mobile-nav-link">예금 적금 추천</button>
+          <button class="mobile-nav-link" @click="goRecommend">예금 적금 추천</button>
+          <button class="mobile-nav-link" @click="goExchange">금•은 시세 확인</button>
           <button class="mobile-nav-link" @click="goBanks">은행 지점 찾기</button>
           <button class="mobile-nav-link" @click="goPosts">게시판</button>
         </nav>
@@ -93,10 +93,22 @@ const goLogin = () => {
   isMenuOpen.value = false
   router.push({ name: 'login' })
 }
+
+const goRecommend = () => {
+  isMenuOpen.value = false
+  router.push({ name: 'recommend' })
+}
+
+const goExchange = () => {
+  isMenuOpen.value = false
+  router.push({ name: 'exchange' })
+}
+
 const goBanks = () => {
   isMenuOpen.value = false
   router.push({ name: 'banks' })
 }
+
 const goPosts = () => {
   isMenuOpen.value = false
   router.push({ name: 'posts' })
@@ -127,7 +139,7 @@ const handleSearch = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 16px;
   padding: 0 28px;
 }
 
@@ -148,7 +160,7 @@ const handleSearch = () => {
 .navigation {
   display: flex;
   align-items: center;
-  gap: 36px;
+  gap: 28px;
   flex: 1;
   justify-content: center;
 }
@@ -158,7 +170,7 @@ const handleSearch = () => {
   border: none;
   background: transparent;
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.02em;
   color: #111827;
   cursor: pointer;
@@ -177,9 +189,8 @@ const handleSearch = () => {
 .right-section {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   flex-shrink: 0;
-  width: 360px;
   justify-content: flex-end;
 }
 
@@ -189,18 +200,24 @@ const handleSearch = () => {
 }
 
 .search-input {
-  width: 220px;
+  width: 200px;
   height: 36px;
   border-radius: 999px;
   border: none;
   background-color: #f3f4f6;
-  padding: 0 60px 0 20px;
-  font-size: 15px;
+  padding: 0 50px 0 18px;
+  font-size: 14px;
   outline: none;
+  transition: width 0.2s ease;
+}
+
+.search-input:focus {
+  width: 220px;
 }
 
 .search-input::placeholder {
   color: #9ca3af;
+  font-size: 13px;
 }
 
 .search-button {
@@ -225,7 +242,7 @@ const handleSearch = () => {
   height: 18px;
 }
 
-/* 홈 / 로그인 버튼 (글자 깨짐 해결 핵심) */
+/* 홈 / 로그인 버튼 */
 .auth-buttons {
   display: flex;
   align-items: center;
@@ -236,14 +253,14 @@ const handleSearch = () => {
 .auth-link {
   min-width: 54px;
   height: 34px;
-  padding: 0 18px;
+  padding: 0 16px;
   border-radius: 999px;
   border: none;
   letter-spacing: -0.01em;
   color: #111827;
   background: transparent;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
   transition:
@@ -262,7 +279,7 @@ const handleSearch = () => {
 }
 
 .auth-link.primary:hover {
-  background-color: #223459;
+  background-color: #4f7de0;
 }
 
 /* 모바일 */
@@ -304,20 +321,20 @@ const handleSearch = () => {
   gap: 8px;
   padding: 12px 16px 8px;
 }
+
 .mobile-nav-link {
   text-align: left;
-  padding: 8px 0;
+  padding: 10px 0;
   border: none;
   background: transparent;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
   color: #111827;
   cursor: pointer;
 }
 
 .mobile-nav-link:hover {
   color: #6393f2;
-  transform: translateY(-1px);
 }
 
 .mobile-auth {
@@ -332,8 +349,14 @@ const handleSearch = () => {
   border: 1px solid #e5e7eb;
   background-color: #ffffff;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  border-radius: 8px;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mobile-auth-btn:hover {
+  border-color: #6393f2;
 }
 
 .mobile-auth-btn.primary {
@@ -346,10 +369,29 @@ const handleSearch = () => {
 .mobile-menu-fade-leave-active {
   transition: opacity 0.18s ease;
 }
+
 .mobile-menu-fade-enter-from,
 .mobile-menu-fade-leave-to {
   opacity: 0;
-  border-color: #6393f2;
+}
+
+/* 반응형 */
+@media (max-width: 1200px) {
+  .navigation {
+    gap: 20px;
+  }
+
+  .nav-link {
+    font-size: 16px;
+  }
+
+  .search-input {
+    width: 180px;
+  }
+
+  .search-input:focus {
+    width: 200px;
+  }
 }
 
 @media (max-width: 960px) {
@@ -357,8 +399,9 @@ const handleSearch = () => {
     height: 64px;
     padding: 0 16px;
   }
-  .logo-section {
-    gap: 8px;
+
+  .logo-image {
+    height: 48px;
   }
 
   .desktop-only {

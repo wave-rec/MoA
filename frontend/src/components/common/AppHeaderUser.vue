@@ -2,14 +2,14 @@
   <header class="header">
     <div class="layout-inner header-inner">
       <!-- 로고 -->
-      <div class="logo-section">
+      <div class="logo-section" @click="goHome">
         <img :src="logoSrc" alt="MoA 로고" class="logo-image" />
       </div>
 
       <!-- 데스크탑용 네비게이션 -->
       <nav class="navigation desktop-only">
-        <button class="nav-link">모아의 모든 것</button>
-        <button class="nav-link">예금 적금 추천</button>
+        <button class="nav-link" @click="goRecommend">예금 적금 추천</button>
+        <button class="nav-link" @click="goExchange">금•은 시세 확인</button>
         <button class="nav-link" @click="goBanks">은행 지점 찾기</button>
         <button class="nav-link" @click="goPosts">게시판</button>
       </nav>
@@ -65,8 +65,8 @@
     <transition name="mobile-menu-fade">
       <div v-if="isMenuOpen" class="mobile-menu mobile-only">
         <nav class="mobile-nav">
-          <button class="mobile-nav-link">모아의 모든 것</button>
-          <button class="mobile-nav-link">예금 적금 추천</button>
+          <button class="mobile-nav-link" @click="goRecommend">예금 적금 추천</button>
+          <button class="mobile-nav-link" @click="goExchange">금•은 시세 확인</button>
           <button class="mobile-nav-link" @click="goBanks">은행 지점 찾기</button>
           <button class="mobile-nav-link" @click="goPosts">게시판</button>
         </nav>
@@ -84,25 +84,40 @@
 import { ref } from 'vue'
 import logoSrc from '@/assets/logo-moa.png'
 import { useRouter } from 'vue-router'
+
 const router = useRouter()
 const searchQuery = ref('')
-
 const isMenuOpen = ref(false)
+
 const toggleMenu = () => {
   isMenuOpen.value = !isMenuOpen.value
 }
 
 const goHome = () => {
+  isMenuOpen.value = false
   router.push({ name: 'home' })
 }
 
+const goRecommend = () => {
+  isMenuOpen.value = false
+  router.push({ name: 'recommend' })
+}
+
+const goExchange = () => {
+  isMenuOpen.value = false
+  router.push({ name: 'exchange' })
+}
+
 const goBanks = () => {
+  isMenuOpen.value = false
   router.push({ name: 'banks' })
 }
 
 const goMyPage = () => {
+  isMenuOpen.value = false
   router.push({ name: 'mypage' })
 }
+
 const goPosts = () => {
   isMenuOpen.value = false
   router.push({ name: 'posts' })
@@ -121,7 +136,6 @@ const handleSearch = () => {
 </script>
 
 <style scoped>
-/* ====== 공통 레이아웃 (로그인 전과 동일) ====== */
 .header {
   position: sticky;
   top: 0;
@@ -135,7 +149,7 @@ const handleSearch = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 16px;
   padding: 0 28px;
 }
 
@@ -144,6 +158,7 @@ const handleSearch = () => {
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .logo-image {
@@ -155,7 +170,7 @@ const handleSearch = () => {
 .navigation {
   display: flex;
   align-items: center;
-  gap: 36px;
+  gap: 28px;
   flex: 1;
   justify-content: center;
 }
@@ -165,7 +180,7 @@ const handleSearch = () => {
   border: none;
   background: transparent;
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.02em;
   color: #111827;
   cursor: pointer;
@@ -184,9 +199,8 @@ const handleSearch = () => {
 .right-section {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   flex-shrink: 0;
-  width: 360px;
   justify-content: flex-end;
 }
 
@@ -196,18 +210,24 @@ const handleSearch = () => {
 }
 
 .search-input {
-  width: 220px;
+  width: 200px;
   height: 36px;
   border-radius: 999px;
   border: none;
   background-color: #f3f4f6;
-  padding: 0 60px 0 20px;
-  font-size: 15px;
+  padding: 0 50px 0 18px;
+  font-size: 14px;
   outline: none;
+  transition: width 0.2s ease;
+}
+
+.search-input:focus {
+  width: 220px;
 }
 
 .search-input::placeholder {
   color: #9ca3af;
+  font-size: 13px;
 }
 
 .search-button {
@@ -241,14 +261,14 @@ const handleSearch = () => {
 
 .auth-link {
   min-width: 54px;
-  padding: 0 18px;
+  padding: 0 16px;
   white-space: nowrap;
   height: 34px;
   border-radius: 999px;
   border: none;
   background: transparent;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: #111827;
   cursor: pointer;
@@ -263,21 +283,34 @@ const handleSearch = () => {
 }
 
 /* 로그인 후 전용 프로필 버튼 */
+.auth-link.primary {
+  background-color: #6393f2;
+  color: #ffffff;
+}
+
+.auth-link.primary:hover {
+  background-color: #4f7de0;
+}
+
 .profile-button {
+  min-width: 40px !important;
+  width: 40px !important;
+  height: 40px !important;
+  padding: 0 !important;
+
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
-}
-
-.profile-button:hover {
-  transform: translateY(-1px);
+  border-radius: 50% !important;
+  background-color: #6393f2;
+  flex-shrink: 0;
 }
 
 .profile-icon {
-  width: 22px;
-  height: 22px;
-  color: #6393f2;
+  width: 24px;
+  height: 24px;
+  color: #ffffff;
+  display: block;
 }
 
 /* 공통: 데스크탑 / 모바일 표시 제어 */
@@ -324,11 +357,11 @@ const handleSearch = () => {
 
 .mobile-nav-link {
   text-align: left;
-  padding: 8px 0;
+  padding: 10px 0;
   border: none;
   background: transparent;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
   color: #111827;
   cursor: pointer;
 }
@@ -349,8 +382,14 @@ const handleSearch = () => {
   border: 1px solid #e5e7eb;
   background-color: #ffffff;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  border-radius: 8px;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mobile-auth-btn:hover {
+  border-color: #6393f2;
 }
 
 .mobile-auth-btn.primary {
@@ -364,20 +403,39 @@ const handleSearch = () => {
 .mobile-menu-fade-leave-active {
   transition: opacity 0.18s ease;
 }
+
 .mobile-menu-fade-enter-from,
 .mobile-menu-fade-leave-to {
   opacity: 0;
 }
 
-/* 반응형 브레이크포인트 (로그인 전과 동일) */
+/* 반응형 */
+@media (max-width: 1200px) {
+  .navigation {
+    gap: 20px;
+  }
+
+  .nav-link {
+    font-size: 16px;
+  }
+
+  .search-input {
+    width: 180px;
+  }
+
+  .search-input:focus {
+    width: 200px;
+  }
+}
+
 @media (max-width: 960px) {
   .header-inner {
     height: 64px;
     padding: 0 16px;
   }
 
-  .logo-section {
-    gap: 8px;
+  .logo-image {
+    height: 48px;
   }
 
   .desktop-only {
