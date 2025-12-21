@@ -439,7 +439,7 @@ const updateAmount = (e) => {
 const applySorting = () => {
   results.value.sort((a, b) => {
     if (a.is_recommended !== b.is_recommended) {
-      return b.is_recommended ? 1 : -1
+      return a.is_recommended ? -1 : 1
     }
     if (sortOption.value === 'max_rate') {
       return (b.max_rate || 0) - (a.max_rate || 0)
@@ -497,11 +497,16 @@ const recommend = async () => {
 
     let fetchedResults = res.data.results ?? []
 
-    if (sortOption.value === 'max_rate') {
-      fetchedResults.sort((a, b) => (b.max_rate || 0) - (a.max_rate || 0))
-    } else if (sortOption.value === 'base_rate') {
-      fetchedResults.sort((a, b) => (b.base_rate || 0) - (a.base_rate || 0))
-    }
+    fetchedResults.sort((a, b) => {
+      if (a.is_recommended !== b.is_recommended) {
+        return a.is_recommended ? -1 : 1
+      }
+      if (sortOption.value === 'max_rate') {
+        return (b.max_rate || 0) - (a.max_rate || 0)
+      } else {
+        return (b.base_rate || 0) - (a.base_rate || 0)
+      }
+    })
 
     results.value = fetchedResults
     console.log(
@@ -981,6 +986,7 @@ const handleImageError = (e) => {
   border: 2px solid #f3f4f6;
   transition: all 0.2s;
   cursor: pointer;
+  position: relative;
 }
 
 .result-item:hover {

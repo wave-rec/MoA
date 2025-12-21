@@ -159,7 +159,7 @@
         <div class="modal-body">
           <div class="ai-analysis-section">
             <h4>📊 종합 분석</h4>
-            <p>{{ aiDetailedAnalysis }}</p>
+            <p>{{ aiDetailedAnalysis?.trim() }}</p>
           </div>
 
           <div class="ai-analysis-section">
@@ -340,8 +340,11 @@ const fetchAIAnalysis = async () => {
     const data = res.data
     const refineText = (text, fallback) => {
       if (!text) return fallback
+
       let t = text.trim()
+
       t = t.replace(/\*\*/g, '')
+
       const userName = authStore.userNickname || '고객'
       t = t.replace(/고객님/g, `${userName}님`)
 
@@ -350,8 +353,18 @@ const fetchAIAnalysis = async () => {
         .replace(/해요/g, '합니다')
         .replace(/시기이기도 합니다/g, '시기입니다')
 
-      if (t.endsWith('최대')) t += ' 금리 혜택을 제공합니다.'
-      if (!/[.!?]$/.test(t)) t += '.'
+      if (t.endsWith('최대')) {
+        t += ' 금리 혜택을 제공합니다'
+      }
+
+      t = t.trim()
+
+      if (t.length > 0) {
+        t = t.replace(/\.+$/, '.')
+        if (!/[.!?]$/.test(t)) {
+          t += '.'
+        }
+      }
 
       return t
     }
@@ -1057,7 +1070,7 @@ onMounted(() => {
   color: #4a5568;
   margin: 0;
   word-break: keep-all;
-  white-space: pre-wrap;
+  /* white-space: pre-wrap; */
   overflow: visible;
 }
 
