@@ -43,6 +43,7 @@ export default {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background: #fafafa;
 }
 
 .header-area {
@@ -50,13 +51,10 @@ export default {
 }
 
 .main-area {
-  flex: 1 0 auto;
-  display: flex;
-  flex-direction: column;
+  flex: 1;
 }
 
 .footer-area {
   flex-shrink: 0;
-  margin-top: auto;
 }
 </style>
