@@ -290,9 +290,36 @@ def get_ai_analysis(request, product_id):
     
     amount = serializer.validated_data['amount']
     months = serializer.validated_data['months']
-
     user = request.user
-
+    
+    # ============================================================
+    # 🔥 Mock 모드 토글 (테스트용)
+    # ============================================================
+    USE_MOCK = True  # ← True: Mock 데이터 / False: 실제 GMS API
+    
+    if USE_MOCK:
+        print(f"🎭 Mock 데이터 반환: {product.name}")
+        
+        base_rate = product.base_rate or 0
+        max_rate = product.max_rate or 0
+        max_amount = int(amount * (1 + (max_rate / 100) * (months / 12)))
+        
+        mock_data = {
+            "summary": f"{user.age}세 {user.name}님께 딱 맞는 상품입니다! 안정적인 금리로 목표 달성을 돕습니다.",
+            "detailed_analysis": f"이 상품은 {user.age}대에게 최적화된 금리 구조를 가지고 있습니다. {amount:,}원을 {months}개월 동안 안전하게 불릴 수 있으며, 최대 {max_amount:,}원을 수령할 수 있습니다. {product.bank_name}의 신뢰할 수 있는 금융 서비스와 함께 {'비대면 가입으로 편리함' if product.is_non_face_to_face else '안정적인 예금자 보호'}까지 갖춘 상품입니다.",
+            "reasons": [
+                f"{user.age}대에게 적합한 안정적인 수익 구조와 리스크 관리",
+                f"{amount:,}원 목표 달성을 위한 {max_rate:.2f}% 경쟁력 있는 최고 금리",
+                f"{'비대면 가입으로 언제 어디서나 편리하게' if product.is_non_face_to_face else '예금자 보호로 안전하게 자산 보관'}"
+            ],
+            "warning": f"중도 해지 시 약정 금리를 받지 못할 수 있으니, {months}개월 동안 유지 가능한지 신중히 고려하시기 바랍니다. 또한 우대 조건 충족 여부를 반드시 확인하세요."
+        }
+        
+        return Response(mock_data, status=status.HTTP_200_OK)
+    
+    # ============================================================
+    # 실제 GMS API 호출 (USE_MOCK=False일 때)
+    # ============================================================
     gms_key = settings.GMS_API_KEY
     if not gms_key:
         return Response(
@@ -370,7 +397,6 @@ def get_ai_analysis(request, product_id):
         return Response({"detail": "AI 분석 요청 시간이 초과되었습니다."}, status=status.HTTP_504_GATEWAY_TIMEOUT)
     except Exception as e:
         return Response({"detail": f"오류가 발생했습니다: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 def parse_ai_response(text):
     result = {
