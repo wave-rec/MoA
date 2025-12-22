@@ -95,12 +95,8 @@
             type="text"
             v-model="amountDisplay"
             @input="updateAmount"
-            @keyup.enter="checkMatchingCount"
-            placeholder="100만원 이상"
+            placeholder="100만원 이상의 금액을 입력해주세요"
           />
-          <button class="mini" type="button" @click="checkMatchingCount" :disabled="countLoading">
-            확인
-          </button>
         </div>
       </div>
 
@@ -216,13 +212,15 @@
           <div class="rank">{{ idx + 1 }}</div>
           <div class="item-content">
             <div class="item-left">
-              <div class="bank-icon">
-                <img
-                  :src="getBankLogo(item.bank_name)"
-                  :alt="item.bank_name"
-                  class="bank-logo-img"
-                  @error="handleImageError"
-                />
+              <div class="bank-icon-wrapper">
+                <div class="bank-icon">
+                  <img
+                    :src="getBankLogo(item.bank_name)"
+                    :alt="item.bank_name"
+                    class="bank-logo-img"
+                    @error="handleImageError"
+                  />
+                </div>
                 <span v-if="item.is_recommended" class="crown-badge">👑</span>
               </div>
               <div class="info">
@@ -269,9 +267,9 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const type = ref('deposit')
-const targetAmount = ref(1000000)
+const targetAmount = ref(0)
 const targetMonths = ref(12)
-const amountDisplay = ref('1,000,000')
+const amountDisplay = ref('')
 
 const monthOptions = [1, 3, 6, 12, 24, 36]
 
@@ -311,16 +309,13 @@ const displayBanks = computed(() => banks.value.slice(0, 5))
 const productLabel = computed(() => (type.value === 'deposit' ? '예금' : '적금'))
 
 const checkMatchingCount = async () => {
-  console.log('[개수 체크] 시작 - 금액:', targetAmount.value)
-
   if (targetAmount.value < 1000000) {
-    console.log('[개수 체크] 금액 부족 (100만원 미만)')
+    alert('100만원 이상의 금액을 입력해주세요.')
     matchingCount.value = null
     return
   }
 
   countLoading.value = true
-
   try {
     const payload = {
       type: type.value,
@@ -328,29 +323,15 @@ const checkMatchingCount = async () => {
       target_months: targetMonths.value,
       limit: 20,
     }
-
-    if (selectedBank.value) {
-      payload.bank_name = selectedBank.value
-    }
-
-    if (isNonFaceToFace.value !== null) {
-      payload.is_non_face_to_face = isNonFaceToFace.value
-    }
-
-    if (isDepositProtected.value !== null) {
-      payload.is_deposit_protected = isDepositProtected.value
-    }
-
-    console.log('[개수 체크] 요청 payload:', payload)
+    if (selectedBank.value) payload.bank_name = selectedBank.value
+    if (isNonFaceToFace.value !== null) payload.is_non_face_to_face = isNonFaceToFace.value
+    if (isDepositProtected.value !== null) payload.is_deposit_protected = isDepositProtected.value
 
     const res = await apiClient.post('/products/recommend/', payload)
     matchingCount.value = res.data.results?.length || 0
-
-    console.log('[개수 체크] 결과:', matchingCount.value, '개')
   } catch (e) {
     console.error('[개수 체크] 오류:', e)
-    console.error('[개수 체크] 응답:', e?.response?.data)
-    matchingCount.value = null
+    matchingCount.value = 0
   } finally {
     countLoading.value = false
   }
@@ -362,26 +343,25 @@ watch(type, () => {
   isDepositProtected.value = null
   showAllBanks.value = false
   targetMonths.value = 12
-  targetAmount.value = 1000000
-  amountDisplay.value = '1,000,000'
+
+  targetAmount.value = 0
+  amountDisplay.value = ''
+
+  results.value = []
   searched.value = false
-  error.value = ''
   matchingCount.value = null
+  error.value = ''
+
+  if (debounceTimer) clearTimeout(debounceTimer)
 })
 
 watch([targetMonths, selectedBank, isNonFaceToFace, isDepositProtected], () => {
-  checkMatchingCount()
-})
+  if (matchingCount.value !== null) {
+    checkMatchingCount()
+  }
 
-let amountTimer = null
-watch(targetAmount, (newVal) => {
-  if (newVal >= 1000000) {
-    clearTimeout(amountTimer)
-    amountTimer = setTimeout(() => {
-      checkMatchingCount()
-    }, 500)
-  } else {
-    matchingCount.value = null
+  if (searched.value) {
+    recommend(true)
   }
 })
 
@@ -390,10 +370,8 @@ onMounted(async () => {
     const res = await fetchBanks()
     banks.value = res.data.banks ?? []
   } catch (e) {
-    console.error('은행 목록 조회 실패:', e)
+    console.error('초기 데이터 로드 실패:', e)
   }
-
-  checkMatchingCount()
 })
 
 const selectBank = (b) => {
@@ -425,14 +403,32 @@ const formatRate = (rate) => {
   return Number(rate).toFixed(2)
 }
 
+let debounceTimer = null
+
 const updateAmount = (e) => {
   const value = e.target.value.replace(/,/g, '')
+
   if (!isNaN(value) && value !== '') {
     targetAmount.value = parseInt(value)
     amountDisplay.value = formatNumber(value)
-  } else if (value === '') {
+
+    if (targetAmount.value < 1000000) {
+      matchingCount.value = null
+      if (debounceTimer) clearTimeout(debounceTimer)
+      return
+    }
+
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      checkMatchingCount()
+    }, 500)
+  } else {
     targetAmount.value = 0
     amountDisplay.value = ''
+    matchingCount.value = null
+    results.value = []
+    searched.value = false
+    if (debounceTimer) clearTimeout(debounceTimer)
   }
 }
 
@@ -459,14 +455,15 @@ const goToDetail = (productId) => {
   })
 }
 
-const recommend = async () => {
-  loading.value = true
-  error.value = ''
-  searched.value = true
+const recommend = async (isManualSearch = false) => {
+  if (isManualSearch) {
+    searched.value = true
+    if (matchingCount.value === null) checkMatchingCount()
+  }
 
   try {
     if (!targetAmount.value || targetAmount.value < 1000000) {
-      error.value = '금액은 100만원 이상부터 가능합니다.'
+      if (isManualSearch) error.value = '금액은 100만원 이상부터 가능합니다.'
       results.value = []
       loading.value = false
       return
@@ -491,8 +488,6 @@ const recommend = async () => {
       config.headers.Authorization = `Token ${authStore.accessToken}`
     }
 
-    console.log('요청 헤더 포함 payload:', payload)
-
     const res = await apiClient.post('/products/recommend/', payload, config)
 
     let fetchedResults = res.data.results ?? []
@@ -509,10 +504,6 @@ const recommend = async () => {
     })
 
     results.value = fetchedResults
-    console.log(
-      '은행명 목록:',
-      results.value.map((r) => r.bank_name),
-    )
   } catch (e) {
     console.error('추천 조회 오류:', e)
     error.value = e?.response?.data?.detail || '조회 중 오류가 발생했습니다.'
@@ -548,6 +539,7 @@ const getBankLogo = (bankName) => {
     전북은행: '/assets/banks/jb.png',
     제주은행: '/assets/banks/jj.png',
     토스뱅크: '/assets/banks/toss.png',
+    '토스뱅크 주식회사': '/assets/banks/toss.png',
     카카오뱅크: '/assets/banks/kakao.png',
     '주식회사 카카오뱅크': '/assets/banks/kakao.png',
     '주식회사 케이뱅크': '/assets/banks/k.png',
@@ -690,6 +682,15 @@ const handleImageError = (e) => {
   justify-content: center;
 }
 
+.bank-icon-wrapper {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .bank-icon {
   width: 48px;
   height: 48px;
@@ -699,7 +700,6 @@ const handleImageError = (e) => {
   display: grid;
   place-items: center;
   position: relative;
-  overflow: hidden;
 }
 
 .bank-logo-img {
@@ -711,9 +711,10 @@ const handleImageError = (e) => {
 
 .crown-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -6px;
+  right: -6px;
   font-size: 16px;
+  z-index: 10;
   background: white;
   border-radius: 50%;
   width: 20px;
@@ -803,18 +804,19 @@ const handleImageError = (e) => {
 
 .input {
   flex: 1;
-  height: 40px;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  padding: 0 12px;
-  outline: none;
-  font-size: 13px;
-  transition: all 0.2s;
+  height: 36px;
+  border-radius: 12px;
+  border: 1.5px solid #e5e7eb;
+  padding: 0 16px;
+  margin-right: 165px;
+  font-size: 15px;
+  transition: all 0.3s ease;
 }
 
 .input:focus {
   border-color: #6393f2;
-  box-shadow: 0 0 0 3px rgba(99, 147, 242, 0.1);
+  box-shadow: 0 0 0 4px rgba(99, 147, 242, 0.15);
+  background-color: #fff;
 }
 
 .input::placeholder {
