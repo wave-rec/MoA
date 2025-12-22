@@ -4,9 +4,8 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 import requests
 from django.conf import settings
-import json
 import re
-from .models import Product, Favorite, ProductRate, Subscription
+from .models import Product, Favorite, Subscription
 from .serializers import ProductListSerializer, ProductDetailSerializer, RecommendRequestSerializer, RecommendResponseSerializer, AIAnalysisRequestSerializer
 
 
@@ -293,9 +292,7 @@ def get_ai_analysis(request, product_id):
     months = serializer.validated_data['months']
 
     user = request.user
-    user_info = f"성함: {user.name or '고객'}, 연령: {user.age or '알 수 없음'}세"
-    
-    # GMS API Key 확인
+
     gms_key = settings.GMS_API_KEY
     if not gms_key:
         return Response(
@@ -303,108 +300,79 @@ def get_ai_analysis(request, product_id):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
     
-    # 예상 수령액 계산
     base_rate = product.base_rate or 0
     max_rate = product.max_rate or 0
-    
-    base_amount = int(amount * (1 + (base_rate / 100) * (months / 12)))
     max_amount = int(amount * (1 + (max_rate / 100) * (months / 12)))
-    
-    # 상품 타입 한글 변환
-    product_type = "예금" if product.type == "DEPOSIT" else "적금"
-    
-    # 프롬프트 생성
-# 프롬프트 생성 (사용자의 나이 페르소나 강화)
+
     prompt = f"""
 당신은 대한민국 최고의 금융 자산관리 전문가입니다. 
-다음 사용자의 [연령대]와 [투자 목표]를 분석하여, 왜 이 상품이 {user.name}님께 '강력 추천'되는지 논리적이고 친절하게 설명해주세요.
+{user.name}({user.age}세)님의 프로필에 맞춰 이 금융상품을 전문적으로 분석해주세요. 
+답변은 친절하면서도 '불필요한 미사여구 없이' 정보 전달에 집중하여 6~8초 내에 생성이 완료되도록 작성하세요.
 
-[사용자 프로필]
-- 성함: {user.name}님
-- 연령: {user.age}세 (이 연령대의 일반적인 재테크 관심사와 생애 주기를 고려할 것)
+[분석 대상] {product.bank_name} - {product.name}
+[가입 조건] {months}개월 / {amount:,}원 투자 / 예상 최대 {max_amount:,}원 수령
 
-[사용자 투자 계획]
-- 목표 금액: {amount:,}원
-- 가입 기간: {months}개월
-- 예상 수령액 (최대): {max_amount:,}원
+다음 형식을 엄격히 지켜주세요:
 
-[분석 대상 상품]
-- 상품명: {product.name} ({product.bank_name})
-- 금리: 기본 {base_rate:.2f}% / 최고 {max_rate:.2f}%
-- 특징: {"비대면 가입 가능" if product.is_non_face_to_face else "영업점 방문 필요"}, {"예금자 보호 상품" if product.is_deposit_protected else "보호 미대상"}
-- 우대조건: {product.prefer_condition_text if product.prefer_condition_text else "기본 조건 충족 시 제공"}
+1. 한줄평: ({user.age}세 {user.name}님을 위한 자산관리 핵심 전략 1문장)
 
-다음 형식으로 답변해주세요:
+2. 상세 분석: ({user.age}대의 생애주기 특징과 이 상품의 금리/안정성 혜택을 결합하여 150자 내외로 심도 있게 분석)
 
-1. 한줄평: ({user.age}세 {user.name}님의 인생 단계에 맞춰 이 상품이 주는 핵심 가치를 50자 이내로 표현)
-2. 상세 분석: ({user.age}대 사용자가 가장 고민하는 자산 관리 포인트와 이 상품의 금리/안정성을 연결하여 150-200자로 분석)
-3. 추천 이유:
-- {user.age}세라는 연령대에 이 상품이 필요한 구체적인 이유 (예: 사회초년생의 종잣돈 마련, 노후 대비 안정성 등)
-- 설정하신 {amount:,}원의 목표를 달성하기 위한 이 상품만의 금리 경쟁력
-- 가입 편의성 및 {user.name}님의 투자 성향에 맞는 부가 혜택
-4. 주의사항: ({user.age}세 사용자가 자금 운용 시 놓치기 쉬운 점 1-2문장)
+3. 추천 이유 (구체적으로):
+- 연령대별 자산 형성 전략과의 적합성 (예: {user.age}세의 위험 선호도 반영)
+- 금리 경쟁력 및 실질 수익성 분석 (시중 금리와 비교한 장점)
+- 가입 편의성 및 {user.name}님만을 위한 우대 혜택 포인트
 
-전문적이면서도 옆에서 직접 상담해주는 듯한 다정한 말투(~해요, ~입니다)를 사용해주세요.
+4. 주의사항: ({user.age}세 사용자가 자금 운용 시 반드시 기억해야 할 리스크나 조건 1~2문장)
 """
     
-    # GMS API 호출
-    gms_url = "https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+    gms_url = "https://gms.ssafy.io/gmsapi/api.openai.com/v1/chat/completions"
     
     try:
         response = requests.post(
-            f"{gms_url}?key={gms_key}",
-            headers={"Content-Type": "application/json"},
+            gms_url,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {gms_key}"
+            },
             json={
-                "contents": [{
-                    "parts": [{
-                        "text": prompt
-                    }]
-                }]
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {
+                        "role": "system", 
+                        "content": "당신은 빠르고 정확한 금융 분석가입니다. 정보를 명확한 구조로 제공하며, 문장은 간결한 '다'/'요'체로 끝맺으세요."
+                    },
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.6,    
+                "max_tokens": 800,    
+                "presence_penalty": 0.1, 
+                "frequency_penalty": 0.1
             },
             timeout=30
         )
         
-        if response.status_code != 200:
-            return Response(
-                {"detail": f"GMS API 호출 실패: {response.status_code}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-        
-        # 응답 파싱
         gms_data = response.json()
         
-        if not gms_data.get('candidates') or not gms_data['candidates'][0].get('content'):
+        if not gms_data.get('choices') or not gms_data['choices'][0].get('message'):
             return Response(
                 {"detail": "AI 응답 형식이 올바르지 않습니다."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
-        ai_text = gms_data['candidates'][0]['content']['parts'][0]['text']
+        ai_text = gms_data['choices'][0]['message']['content']
         
-        # 응답 파싱
         parsed_data = parse_ai_response(ai_text)
         
         return Response(parsed_data, status=status.HTTP_200_OK)
         
     except requests.Timeout:
-        return Response(
-            {"detail": "AI 분석 요청 시간이 초과되었습니다."},
-            status=status.HTTP_504_GATEWAY_TIMEOUT
-        )
-    except requests.RequestException as e:
-        return Response(
-            {"detail": f"AI 분석 중 오류가 발생했습니다: {str(e)}"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({"detail": "AI 분석 요청 시간이 초과되었습니다."}, status=status.HTTP_504_GATEWAY_TIMEOUT)
     except Exception as e:
-        return Response(
-            {"detail": f"예상치 못한 오류가 발생했습니다: {str(e)}"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({"detail": f"오류가 발생했습니다: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 def parse_ai_response(text):
-    # 기본값 설정
     result = {
         "summary": "안정적인 금리로 목표 수익을 달성할 수 있는 상품입니다.",
         "detailed_analysis": "이 상품은 경쟁력 있는 금리와 다양한 우대조건을 제공하여 고객님의 재테크 목표 달성에 도움이 될 것으로 예상됩니다.",
@@ -417,16 +385,13 @@ def parse_ai_response(text):
     }
     
     try:
-        # 1. 한줄평 추출
         summary_match = re.search(r'한줄평[:\s]*(.+?)(?=\n|2\.|상세)', text, re.IGNORECASE)
         if summary_match:
             summary = summary_match.group(1).strip()
-            # 따옴표 제거
             summary = summary.strip('"\'')
             if summary and len(summary) > 10:
                 result["summary"] = summary[:200]
         
-        # 2. 상세 분석 추출
         analysis_match = re.search(r'상세\s*분석[:\s]*(.+?)(?=3\.|추천\s*이유|$)', text, re.DOTALL | re.IGNORECASE)
         if analysis_match:
             analysis = analysis_match.group(1).strip()
@@ -434,18 +399,14 @@ def parse_ai_response(text):
             if analysis and len(analysis) > 20:
                 result["detailed_analysis"] = analysis[:500]
         
-        # 3. 추천 이유 추출
         reasons_match = re.search(r'추천\s*이유[:\s]*(.+?)(?=4\.|주의사항|$)', text, re.DOTALL | re.IGNORECASE)
         if reasons_match:
             reasons_text = reasons_match.group(1)
-            # 줄바꿈으로 분리
             lines = reasons_text.split('\n')
             reasons = []
             for line in lines:
                 line = line.strip()
-                # - 또는 • 또는 숫자로 시작하는 라인만
                 if line and (line.startswith('-') or line.startswith('•') or re.match(r'^\d+[.).]', line)):
-                    # 앞의 기호 제거
                     clean_line = re.sub(r'^[-•\d.).\s]+', '', line).strip()
                     if clean_line and len(clean_line) > 5:
                         reasons.append(clean_line[:200])
@@ -453,7 +414,6 @@ def parse_ai_response(text):
             if reasons:
                 result["reasons"] = reasons[:3]
         
-        # 4. 주의사항 추출
         warning_match = re.search(r'주의사항[:\s]*(.+?)$', text, re.DOTALL | re.IGNORECASE)
         if warning_match:
             warning = warning_match.group(1).strip()
@@ -462,7 +422,6 @@ def parse_ai_response(text):
                 result["warning"] = warning[:500]
     
     except Exception as e:
-        # 파싱 실패 시 기본값 사용
         print(f"AI 응답 파싱 오류: {e}")
     
     return result
