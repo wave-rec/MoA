@@ -38,7 +38,6 @@
         <h3>찜 목록</h3>
         <p>관심 상품 한눈에 보기</p>
       </div>
-
       <div class="menu-card" @click="goPosts">
         <h3>내가 쓴 게시글</h3>
         <p>작성한 글 관리</p>
@@ -78,13 +77,14 @@ const goEdit = () => {
 }
 
 // 찜 목록
+
 const goLikes = () => {
-  alert('찜 목록 페이지 준비 중')
+  router.push({ name: 'LikedProducts' })
 }
 
 // 내가 쓴 게시글
 const goPosts = () => {
-  alert('게시글 페이지 준비 중')
+  router.push({ name: 'my-posts' })
 }
 
 // 로그아웃

@@ -80,3 +80,34 @@ def my_favorites(request):
     )
     serializer = ProductListSerializer(qs, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+# 비밀번호 변경
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    user = request.user
+
+    current_password = request.data.get('current_password')
+    new_password = request.data.get('new_password')
+
+    if not current_password or not new_password:
+        return Response(
+            {'detail': '현재 비밀번호와 새 비밀번호를 모두 입력해주세요.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # 현재 비밀번호 검증
+    if not user.check_password(current_password):
+        return Response(
+            {'detail': '현재 비밀번호가 올바르지 않습니다.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # 새 비밀번호 저장
+    user.set_password(new_password)
+    user.save()
+
+    return Response(
+        {'detail': '비밀번호가 변경되었습니다.'},
+        status=status.HTTP_200_OK
+    )

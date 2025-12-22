@@ -14,6 +14,7 @@ import YoutubeSearchview from '@/views/YoutubeSearchview.vue'
 import ProductDetailView from '@/views/ProductDetailView.vue'
 import CommodityView from '@/views/CommodityView.vue'
 import PostEditView from '@/views/PostEditView.vue'
+import LikedProductsView from '@/views/LikedProductsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -93,6 +94,16 @@ const router = createRouter({
           name: 'post-edit',
           component: PostEditView,
         },
+        {
+          path: '/mypage/posts',
+          name: 'my-posts',
+          component: () => import('@/views/MyPostsView.vue'),
+        },
+        {
+          path: '/mypage/likes',
+          name: 'LikedProducts',
+          component: LikedProductsView,
+        }
       ],
     },
   ],
