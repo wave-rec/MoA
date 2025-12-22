@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/layouts/MainLayout.vue'
-import HomeView from '@/views/HomeView.vue'
+import MainView from '@/views/MainView.vue'
 import LoginView from '@/views/LoginView.vue'
 import SignupView from '@/views/SignupView.vue'
 import BankSearchView from '@/views/BankSearchView.vue'
@@ -24,7 +24,7 @@ const router = createRouter({
         {
           path: '',
           name: 'home',
-          component: HomeView,
+          component: MainView,
         },
         {
           path: 'login',
@@ -86,7 +86,7 @@ const router = createRouter({
           path: '/commodity',
           name: 'commodity',
           component: CommodityView,
-        }
+        },
       ],
     },
   ],
