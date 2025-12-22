@@ -13,6 +13,7 @@ import PostDetailView from '@/views/PostDetailView.vue'
 import YoutubeSearchview from '@/views/YoutubeSearchview.vue'
 import ProductDetailView from '@/views/ProductDetailView.vue'
 import CommodityView from '@/views/CommodityView.vue'
+import PostEditView from '@/views/PostEditView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -86,7 +87,12 @@ const router = createRouter({
           path: '/commodity',
           name: 'commodity',
           component: CommodityView,
-        }
+        },
+        {
+          path: '/posts/:id/edit',
+          name: 'post-edit',
+          component: PostEditView,
+        },
       ],
     },
   ],
