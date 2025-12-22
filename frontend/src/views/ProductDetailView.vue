@@ -471,22 +471,40 @@ onMounted(() => {
   max-width: 1000px;
   margin: 0 auto;
   padding: 40px 20px;
-  background: #f8f9fa;
+  background: transparent;
 }
 
 .loading {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   text-align: center;
-  padding: 60px 20px;
+  background: transparent;
+  padding: 0;
 }
 
 .spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid #f3f4f6;
-  border-top: 4px solid #6393f2;
+  width: 60px;
+  height: 60px;
+  border: 5px solid #f3f4f6;
+  border-top: 5px solid #6393f2;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto 20px;
+}
+
+.loading p {
+  font-family:
+    'Pretendard',
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: #6b7280;
+  margin: 0;
 }
 
 @keyframes spin {
