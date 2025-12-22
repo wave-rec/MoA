@@ -1,50 +1,103 @@
 <template>
   <div class="youtube-search-view">
     <div class="layout-inner">
-      <h2 class="search-title">
-        <span class="keyword">"{{ searchQuery }}"</span> 검색 결과
-      </h2>
+      <!-- 검색 결과가 없을 때 → 카드 그리드 표시 -->
+      <div v-if="!searchQuery" class="term-selection">
+        <h2 class="selection-title">
+          <span class="icon">💡</span>
+          궁금한 금융 용어를 선택해보세요
+        </h2>
+        <p class="selection-subtitle">
+          초보자도 쉽게 이해할 수 있는 금융 지식을 영상으로 배워보세요
+        </p>
 
-      <div v-if="loading && videos.length === 0" class="loading-container">
-        <div class="spinner"></div>
-        <p>영상을 불러오는 중입니다...</p>
-      </div>
-
-      <div v-else class="video-grid">
-        <div
-          v-for="video in videos"
-          :key="video.id.videoId"
-          class="video-card"
-          @click="openVideoModal(video.id.videoId)"
-        >
-          <div class="thumbnail-wrapper">
-            <img
-              :src="video.snippet.thumbnails.high.url"
-              :alt="video.snippet.title"
-              class="thumbnail"
-            />
-            <div class="play-overlay">
-              <span class="play-icon">▶</span>
-            </div>
-          </div>
-          <div class="video-info">
-            <h3 class="video-title" v-html="video.snippet.title"></h3>
-            <p class="channel-name">{{ video.snippet.channelTitle }}</p>
-            <p class="publish-date">{{ formatDate(video.snippet.publishedAt) }}</p>
-          </div>
+        <!-- 카테고리별 탭 -->
+        <div class="category-tabs">
+          <button
+            v-for="cat in categories"
+            :key="cat"
+            :class="['category-tab', { active: selectedCategory === cat }]"
+            @click="selectedCategory = cat"
+          >
+            {{ CATEGORY_COLORS[cat].icon }} {{ cat }}
+          </button>
         </div>
 
-        <p v-if="videos.length === 0 && !loading" class="no-result">검색 결과가 없습니다.</p>
+        <!-- 용어 카드 그리드 -->
+        <div class="term-grid">
+          <div
+            v-for="term in filteredTerms"
+            :key="term.title"
+            class="term-card"
+            @click="selectTerm(term.query)"
+            :style="{
+              borderColor: CATEGORY_COLORS[term.category].text,
+            }"
+          >
+            <div class="term-emoji">{{ term.emoji }}</div>
+            <h3 class="term-title">{{ term.title }}</h3>
+            <p class="term-description">{{ term.description }}</p>
+            <div
+              class="term-badge"
+              :style="{
+                background: CATEGORY_COLORS[term.category].bg,
+                color: CATEGORY_COLORS[term.category].text,
+              }"
+            >
+              {{ term.category }}
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div v-if="loading && videos.length > 0" class="more-loading">
-        <div class="spinner-small"></div>
-        <p>영상을 더 불러오는 중...</p>
-      </div>
+      <!-- 검색 결과 화면 (기존 코드) -->
+      <div v-else>
+        <h2 class="search-title">
+          <span class="keyword">"{{ searchQuery }}"</span> 검색 결과
+        </h2>
 
-      <p v-if="isEnd && videos.length > 0" class="no-more">마지막 영상입니다.</p>
+        <div v-if="loading && videos.length === 0" class="loading-container">
+          <div class="spinner"></div>
+          <p>영상을 불러오는 중입니다...</p>
+        </div>
+
+        <div v-else class="video-grid">
+          <div
+            v-for="video in videos"
+            :key="video.id.videoId"
+            class="video-card"
+            @click="openVideoModal(video.id.videoId)"
+          >
+            <div class="thumbnail-wrapper">
+              <img
+                :src="video.snippet.thumbnails.high.url"
+                :alt="video.snippet.title"
+                class="thumbnail"
+              />
+              <div class="play-overlay">
+                <span class="play-icon">▶</span>
+              </div>
+            </div>
+            <div class="video-info">
+              <h3 class="video-title" v-html="video.snippet.title"></h3>
+              <p class="channel-name">{{ video.snippet.channelTitle }}</p>
+              <p class="publish-date">{{ formatDate(video.snippet.publishedAt) }}</p>
+            </div>
+          </div>
+
+          <p v-if="videos.length === 0 && !loading" class="no-result">검색 결과가 없습니다.</p>
+        </div>
+
+        <div v-if="loading && videos.length > 0" class="more-loading">
+          <div class="spinner-small"></div>
+          <p>영상을 더 불러오는 중...</p>
+        </div>
+
+        <p v-if="isEnd && videos.length > 0" class="no-more">마지막 영상입니다.</p>
+      </div>
     </div>
 
+    <!-- 영상 재생 모달 -->
     <Transition name="fade">
       <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
         <div class="modal-content">
@@ -65,11 +118,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import { FINANCIAL_TERMS, CATEGORY_COLORS } from '@/constants/financialTerms'
 
 const route = useRoute()
+const router = useRouter()
 const searchQuery = ref(route.query.q || '')
 const videos = ref([])
 const loading = ref(false)
@@ -79,6 +134,19 @@ const isEnd = ref(false)
 // 모달 관련 상태
 const isModalOpen = ref(false)
 const selectedVideoId = ref('')
+
+// 카테고리 필터링
+const selectedCategory = ref('기본개념')
+const categories = Object.keys(CATEGORY_COLORS)
+
+const filteredTerms = computed(() => {
+  return FINANCIAL_TERMS.filter((term) => term.category === selectedCategory.value)
+})
+
+// 용어 선택 → 유튜브 검색
+const selectTerm = (query) => {
+  router.push({ name: 'YoutubeSearch', query: { q: query } })
+}
 
 const formatDate = (dateString) => {
   const date = new Date(dateString)
@@ -148,7 +216,9 @@ const handleScroll = () => {
 }
 
 onMounted(() => {
-  fetchVideos()
+  if (route.query.q) {
+    fetchVideos()
+  }
   window.addEventListener('scroll', handleScroll)
 })
 
@@ -158,11 +228,14 @@ onUnmounted(() => {
 
 watch(
   () => route.query.q,
-  () => {
-    videos.value = []
-    nextPageToken.value = ''
-    isEnd.value = false
-    fetchVideos()
+  (newQuery) => {
+    searchQuery.value = newQuery || ''
+    if (newQuery) {
+      videos.value = []
+      nextPageToken.value = ''
+      isEnd.value = false
+      fetchVideos()
+    }
   },
 )
 </script>
@@ -173,6 +246,118 @@ watch(
   min-height: 100vh;
 }
 
+/* 용어 선택 화면 */
+.term-selection {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.selection-title {
+  font-size: 32px;
+  font-weight: 900;
+  color: #111827;
+  text-align: center;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.selection-title .icon {
+  font-size: 36px;
+}
+
+.selection-subtitle {
+  text-align: center;
+  color: #6b7280;
+  font-size: 16px;
+  margin-bottom: 40px;
+}
+
+/* 카테고리 탭 */
+.category-tabs {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+
+.category-tab {
+  padding: 12px 24px;
+  border: 2px solid #e5e7eb;
+  background: white;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.category-tab:hover {
+  border-color: #6393f2;
+  color: #6393f2;
+  transform: translateY(-2px);
+}
+
+.category-tab.active {
+  background: #6393f2;
+  border-color: #6393f2;
+  color: white;
+}
+
+/* 용어 카드 그리드 */
+.term-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.term-card {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.term-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+}
+
+.term-emoji {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.term-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.term-description {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.term-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* 검색 결과 화면 */
 .search-title {
   font-size: 24px;
   margin-bottom: 30px;
@@ -356,5 +541,26 @@ watch(
   text-align: center;
   padding: 40px 0;
   color: #9ca3af;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .selection-title {
+    font-size: 24px;
+  }
+
+  .category-tabs {
+    gap: 8px;
+  }
+
+  .category-tab {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+
+  .term-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 </style>
