@@ -16,27 +16,19 @@
 
       <!-- 데스크탑용: 검색 + 홈 + 프로필 -->
       <div class="right-section desktop-only">
-        <div class="search-box">
-          <input
-            v-model="searchQuery"
-            @keyup.enter="handleSearch"
-            type="text"
-            placeholder="Youtube에서 검색해보세요"
-            class="search-input"
-          />
-          <button @click="handleSearch" class="search-button">
-            <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M21 21l-4.35-4.35m0 0A6.5 6.5 0 105.5 5.5a6.5 6.5 0 0011.15 11.15z"
-                fill="none"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="1.8"
-              />
-            </svg>
-          </button>
-        </div>
+        <button class="search-box" @click="goYoutube">
+          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M21 21l-4.35-4.35m0 0A6.5 6.5 0 105.5 5.5a6.5 6.5 0 0011.15 11.15z"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.8"
+            />
+          </svg>
+          <span class="search-text">Youtube에서 금융 용어 검색해보기</span>
+        </button>
 
         <div class="auth-buttons">
           <button class="auth-link" @click="goHome">홈</button>
@@ -69,6 +61,7 @@
           <button class="mobile-nav-link" @click="goExchange">금•은 시세 확인</button>
           <button class="mobile-nav-link" @click="goBanks">은행 지점 찾기</button>
           <button class="mobile-nav-link" @click="goPosts">게시판</button>
+          <button class="mobile-nav-link" @click="goYoutube">금융 용어 알아보기</button>
         </nav>
 
         <div class="mobile-auth">
@@ -86,7 +79,6 @@ import logoSrc from '@/assets/logo-moa.png'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-const searchQuery = ref('')
 const isMenuOpen = ref(false)
 
 const toggleMenu = () => {
@@ -123,15 +115,9 @@ const goPosts = () => {
   router.push({ name: 'posts' })
 }
 
-const handleSearch = () => {
-  if (!searchQuery.value.trim()) return
-
-  router.push({
-    name: 'YoutubeSearch',
-    query: { q: searchQuery.value },
-  })
-
-  searchQuery.value = ''
+const goYoutube = () => {
+  isMenuOpen.value = false
+  router.push({ name: 'YoutubeSearch' })
 }
 </script>
 
@@ -207,49 +193,39 @@ const handleSearch = () => {
 /* 검색창 */
 .search-box {
   position: relative;
-}
-
-.search-input {
   width: 200px;
   height: 36px;
   border-radius: 999px;
   border: none;
   background-color: #f3f4f6;
-  padding: 0 50px 0 18px;
+  padding: 0 18px 0 50px;
   font-size: 14px;
   outline: none;
-  transition: width 0.2s ease;
-}
-
-.search-input:focus {
-  width: 220px;
-}
-
-.search-input::placeholder {
-  color: #9ca3af;
-  font-size: 13px;
-}
-
-.search-button {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  border: none;
-  background: transparent;
+  transition: all 0.2s ease;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #6b7280;
-  cursor: pointer;
+}
+
+.search-box:hover {
+  width: 250px;
+  background-color: #e5e7eb;
+}
+
+.search-text {
+  color: #9ca3af;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .search-icon {
+  position: absolute;
+  left: 18px;
   width: 18px;
   height: 18px;
+  color: #6b7280;
 }
 
 /* 홈 / 프로필 (데스크탑) */
@@ -419,11 +395,11 @@ const handleSearch = () => {
     font-size: 16px;
   }
 
-  .search-input {
+  .search-box {
     width: 180px;
   }
 
-  .search-input:focus {
+  .search-box:hover {
     width: 200px;
   }
 }
