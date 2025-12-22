@@ -50,10 +50,13 @@ export default {
 }
 
 .main-area {
-  flex: 1;
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .footer-area {
   flex-shrink: 0;
+  margin-top: auto;
 }
 </style>
