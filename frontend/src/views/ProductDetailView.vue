@@ -264,6 +264,8 @@ const getBankLogo = (bankName) => {
     하나: 'hana.png',
     카카오: 'kakao.png',
     토스: 'toss.png',
+    토스뱅크: 'toss.png',
+    '토스뱅크 주식회사': 'toss.png',
     케이: 'kbank.png',
     한국스탠다드차타드: 'sc.png',
     제일: 'sc.png',
@@ -456,6 +458,7 @@ const shortBankName = (name) => {
     '주식회사 하나은행': '하나은행',
     '주식회사 카카오뱅크': '카카오뱅크',
     '주식회사 케이뱅크': '케이뱅크',
+    '토스뱅크 주식회사': '토스뱅크',
   }
 
   return nameMap[name] || name.replace('주식회사 ', '')
