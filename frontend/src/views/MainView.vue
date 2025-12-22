@@ -188,32 +188,31 @@ onUnmounted(() => {
 <style scoped>
 .main-view {
   background: #fafafa;
-  padding: 60px 0 40px;
-  flex: 1;
+  padding: 80px 0 40px;
 }
 
 .main-content {
-  max-width: 1400px;
+  max-width: 1300px;
   margin: 0 auto;
   padding: 0 40px;
   display: grid;
-  grid-template-columns: 1fr 400px;
-  gap: 24px;
+  grid-template-columns: 1fr 380px;
+  gap: 20px;
 }
 
 /* ========== 히어로 슬라이드 ========== */
 .hero-section {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 28px;
 }
 
 .slider-container {
   background: white;
-  border-radius: 24px;
+  border-radius: 20px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   position: relative;
-  height: 645px;
+  height: 580px;
   overflow: hidden;
   cursor: pointer;
 }
@@ -231,6 +230,7 @@ onUnmounted(() => {
   height: 100%;
   object-fit: cover;
   border-radius: 24px;
+  transform: scale(1.005);
 }
 
 /* 슬라이드 애니메이션 */
@@ -277,12 +277,12 @@ onUnmounted(() => {
 
 /* ========== 은행 찾기 배너 ========== */
 .bank-finder-banner {
-  border-radius: 24px;
+  border-radius: 20px;
   cursor: pointer;
   transition: all 0.3s;
   box-shadow: 0 4px 16px rgba(99, 147, 242, 0.2);
   overflow: hidden;
-  height: 220px;
+  height: 200px;
 }
 
 .bank-finder-banner:hover {
@@ -294,25 +294,24 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
 }
 
 /* ========== 사이드바 ========== */
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px; /* 20px → 18px */
   height: 100%;
 }
 
 /* 금은시세 카드 */
 .exchange-card {
-  border-radius: 20px;
+  border-radius: 18px; /* 20px → 18px */
   cursor: pointer;
   transition: all 0.3s;
   box-shadow: 0 4px 16px rgba(99, 147, 242, 0.3);
+  min-height: 240px; /* 260px → 240px */
   overflow: hidden;
-  height: 280px;
 }
 
 .exchange-card:hover {
@@ -326,13 +325,13 @@ onUnmounted(() => {
   object-fit: cover;
   object-position: center;
   display: block;
-  transform: scale(1.03);
+  transform: scale(1.005);
 }
 
 /* 게시판 카드 */
 .board-card {
   background: white;
-  border-radius: 20px;
+  border-radius: 18px;
   padding: 20px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   display: flex;
@@ -344,12 +343,12 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   flex-shrink: 0;
 }
 
 .board-header h3 {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
   color: #111827;
   margin: 0;
@@ -474,6 +473,38 @@ onUnmounted(() => {
 }
 
 /* 반응형 */
+@media (max-width: 1440px) {
+  .main-view {
+    padding: 20px 0 30px;
+  }
+
+  .main-content {
+    max-width: 1200px;
+    padding: 0 30px;
+    gap: 20px;
+  }
+
+  .slider-container {
+    height: 550px;
+  }
+
+  .slide {
+    min-height: 550px;
+  }
+
+  .sidebar {
+    gap: 18px;
+  }
+
+  .exchange-card {
+    min-height: 240px;
+  }
+
+  .board-card {
+    /* flex: 1로 자동 조정 */
+  }
+}
+
 @media (max-width: 1200px) {
   .main-content {
     grid-template-columns: 1fr 350px;
@@ -482,7 +513,7 @@ onUnmounted(() => {
   }
 
   .slider-container {
-    min-height: 450px;
+    height: 450px;
   }
 
   .slide {
@@ -497,7 +528,7 @@ onUnmounted(() => {
   }
 
   .slider-container {
-    min-height: 400px;
+    height: 400px;
   }
 
   .slide {
