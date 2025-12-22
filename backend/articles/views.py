@@ -9,6 +9,8 @@ from .serializers import (
 )
 from .permissions import IsOwner
 from django.db.models import Count
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 
 # 게시글 목록 및 작성
 class PostListCreateView(generics.ListCreateAPIView):
@@ -88,3 +90,18 @@ class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.method in ['PATCH', 'DELETE']:
             return [permissions.IsAuthenticated(), IsOwner()]
         return []
+
+
+
+class MyPostListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        posts = (
+            Post.objects
+            .filter(user=request.user)
+            .annotate(comment_count=Count('comments'))
+            .order_by('-created_at')
+        )
+        serializer = PostListSerializer(posts, many=True)
+        return Response(serializer.data)

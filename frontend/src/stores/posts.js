@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import api from '@/api/axios'
 
 export const usePostStore = defineStore('post', () => {
+  // ===== 전체 게시글 =====
   const posts = ref([])
   const count = ref(0)
   const next = ref(null)
@@ -25,13 +26,26 @@ export const usePostStore = defineStore('post', () => {
     currentPage.value = page
   }
 
+  // ===== 내가 쓴 게시글 =====
+  const myPosts = ref([])
+
+  const fetchMyPosts = async () => {
+    const res = await api.get('/api/v1/posts/my/')
+    myPosts.value = res.data
+  }
+
   return {
+    // 전체 게시글
     posts,
     count,
     next,
     previous,
     currentPage,
+    pageSize,
     fetchPosts,
-    pageSize, 
+
+    // 내가 쓴 게시글
+    myPosts,
+    fetchMyPosts,
   }
 })
