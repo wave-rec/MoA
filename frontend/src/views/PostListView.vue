@@ -16,10 +16,16 @@
       </div>
 
       <div class="right-box">
-        <input class="search-input" placeholder="검색" />
-        <button class="search-btn">검색</button>
+        <input
+          class="search-input"
+          placeholder="검색"
+          v-model="searchKeyword"
+          @keyup.enter="searchPosts"
+        />
+        <button class="search-btn" @click="searchPosts">검색</button>
         <button class="write-btn" @click="goCreate">글쓰기</button>
       </div>
+
     </div>
 
     <!-- 리스트 -->
@@ -30,8 +36,8 @@
         :key="post.id"
         @click="goDetail(post.id)"
       >
-        <span class="post-index">{{ index + 1 }}</span>
-        <span class="post-category">{{ post.category }}</span>
+        <span class="post-index">{{ (currentPage - 1) * store.pageSize + index + 1 }}</span>
+        <span class="post-category">{{ post.category_display }}</span>
         <span class="post-title">{{ post.title }}</span>
         <span class="post-date">{{ post.created_at?.slice(0, 10) }}</span>
       </div>
@@ -39,12 +45,27 @@
 
     <!-- 페이지네이션 (UI용) -->
     <div class="pagination">
-      <span>&lt;</span>
-      <span class="active">1</span>
-      <span>2</span>
-      <span>3</span>
-      <span>&gt;</span>
+      <span
+        v-if="currentPage > 1"
+        @click="goPage(currentPage - 1)"
+      >&lt;</span>
+
+      <span
+        v-for="p in Math.ceil(store.count / store.pageSize)"
+        :key="p"
+        :class="{ active: currentPage === p }"
+        @click="goPage(p)"
+      >
+        {{ p }}
+      </span>
+
+      <span
+        v-if="currentPage < Math.ceil(store.count / store.pageSize)"
+        @click="goPage(currentPage + 1)"
+      >&gt;</span>
     </div>
+
+
   </div>
 </template>
 
@@ -59,6 +80,19 @@ const store = usePostStore()
 const posts = computed(() => store.posts)
 const currentCategory = ref(null)
 
+const searchKeyword = ref('')
+const searchPosts = () => {
+  currentPage.value = 1
+  store.fetchPosts(currentCategory.value, searchKeyword.value, 1)
+}
+const currentPage = ref(1)
+
+const totalPages = computed(() => Math.ceil(store.count / 10))
+
+const changePage = (page) => {
+  store.fetchPosts(currentCategory.value, searchKeyword.value, page)
+}
+
 const categories = [
   { label: '전체', value: null },
   { label: '예금', value: 'DEPOSIT' },
@@ -68,8 +102,11 @@ const categories = [
 
 const selectCategory = (category) => {
   currentCategory.value = category
-  store.fetchPosts(category)
+  currentPage.value = 1
+  store.fetchPosts(category, searchKeyword.value, 1)
 }
+
+
 
 const goDetail = (id) => {
   router.push(`/posts/${id}`)
@@ -78,6 +115,12 @@ const goDetail = (id) => {
 const goCreate = () => {
   router.push('/posts/create')
 }
+
+const goPage = (page) => {
+  currentPage.value = page
+  store.fetchPosts(currentCategory.value, searchKeyword.value, page)
+}
+
 
 onMounted(() => {
   store.fetchPosts()

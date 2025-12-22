@@ -1,27 +1,19 @@
 <template>
   <div class="post-detail">
 
-    <!-- 상단 여백 -->
-    <div class="top-space"></div>
-
-    <!-- 게시글 로딩 -->
-    <div v-if="!post" class="loading">
-      게시글 불러오는 중...
-    </div>
-
     <!-- 게시글 -->
-    <section v-else class="post-box">
-      <span class="category">{{ post.category }}</span>
+    <section v-if="post" class="post-box">
+      <span class="category">{{ post.category_display }}</span>
 
-      <h2 class="title">{{ post.title }}</h2>
-            <button
-        v-if="isMyPost"
-        class="delete-btn"
-        @click="deletePost"
-        >
-        삭제
-        </button>
+      <div class="post-header">
+        <h2 class="title">{{ post.title }}</h2>
 
+        <!-- 게시글 수정 / 삭제 -->
+        <div v-if="isMyPost" class="post-actions">
+          <button class="action-btn" @click="goEditPost">수정</button>
+          <button class="action-btn danger" @click="deletePost">삭제</button>
+        </div>
+      </div>
 
       <div class="meta">
         <span class="author">{{ post.user_name }}</span>
@@ -34,224 +26,321 @@
     <!-- 댓글 -->
     <section v-if="post" class="comment-section">
 
-        <!-- 댓글 작성 -->
+      <!-- 댓글 작성 -->
       <div class="comment-form">
         <textarea
           v-model="newComment"
+          class="comment-textarea"
           placeholder="댓글을 입력하세요"
+          @keydown.enter.exact.prevent="submitComment"
         ></textarea>
-        <button @click="submitComment">댓글 작성</button>
+
+        <div class="comment-actions">
+          <button class="primary-btn" @click="submitComment">댓글 작성</button>
+        </div>
       </div>
-      <h3>댓글 {{ safeComments.length }}</h3>
 
-      <p v-if="safeComments.length === 0" class="no-comment">
-        아직 댓글이 없습니다.
-      </p>
+      <h3 class="comment-title">댓글 {{ safeComments.length }}</h3>
 
-      <ul>
-        <li
-          v-for="comment in safeComments"
-          :key="comment.id"
-        >
+      <ul class="comment-list">
+        <li v-for="comment in safeComments" :key="comment.id">
+
+          <!-- 댓글 헤더 -->
           <div class="comment-header">
-            <strong>{{ comment.user_name }}</strong>
-            <span>
-              {{ comment.created_at?.slice(0,16).replace('T',' ') }}
-            </span>
+            <div class="comment-info">
+              <strong>{{ comment.user_name }}</strong>
+              <span class="comment-date">
+                {{ comment.created_at?.slice(0,16).replace('T',' ') }}
+              </span>
+            </div>
+
+            <!-- 댓글 수정 / 삭제 -->
+            <div v-if="isMyComment(comment)" class="comment-actions">
+              <button class="action-btn" @click="startEditComment(comment)">수정</button>
+              <button class="action-btn danger" @click="deleteComment(comment.id)">삭제</button>
+            </div>
           </div>
-          <p>{{ comment.content }}</p>
+
+          <!-- 댓글 내용 -->
+          <p v-if="editingId !== comment.id" class="comment-content">
+            {{ comment.content }}
+          </p>
+
+          <!-- 댓글 수정 모드 -->
+          <div v-else class="edit-box">
+            <textarea v-model="editContent" class="edit-textarea"></textarea>
+
+            <div class="comment-actions">
+              <button class="action-btn" @click="confirmEditComment(comment.id)">완료</button>
+              <button class="action-btn danger" @click="cancelEdit">취소</button>
+            </div>
+          </div>
+
         </li>
       </ul>
-
     </section>
 
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '@/api/axios'
 import { useAuthStore } from '@/stores/auth'
-import { useRouter } from 'vue-router'
 
 const route = useRoute()
-const authStore = useAuthStore()
 const router = useRouter()
+const authStore = useAuthStore()
 const postId = route.params.id
 
 const post = ref(null)
 const comments = ref([])
 const newComment = ref('')
 
-/* 댓글을 무조건 배열로 보정 */
-const safeComments = computed(() => {
-  return Array.isArray(comments.value) ? comments.value : []
-})
+const editingId = ref(null)
+const editContent = ref('')
 
-/* 게시글 조회 */
+const safeComments = computed(() =>
+  Array.isArray(comments.value) ? comments.value : []
+)
+
+const isMyPost = computed(() =>
+  authStore.isLogin && post.value?.user_id === authStore.user?.id
+)
+
+const isMyComment = (comment) =>
+  authStore.isLogin && comment.user_name === authStore.user?.name
+
+/* 게시글 */
 const fetchPost = async () => {
   const res = await api.get(`/api/v1/posts/${postId}/`)
   post.value = res.data
 }
 
-/* 댓글 조회 */
-const fetchComments = async () => {
-  const res = await api.get(`/api/v1/posts/${postId}/comments/`)
-
-  comments.value = Array.isArray(res.data)
-    ? res.data
-    : res.data.results || []
+const deletePost = async () => {
+  if (!confirm('게시글을 삭제할까요?')) return
+  await api.delete(`/api/v1/posts/${postId}/`)
+  router.push('/posts')
 }
 
-/* 댓글 작성 */
+const goEditPost = () => {
+  router.push(`/posts/${postId}/edit`)
+}
+
+/* 댓글 */
+const fetchComments = async () => {
+  const res = await api.get(`/api/v1/posts/${postId}/comments/`)
+  comments.value = res.data
+}
+
 const submitComment = async () => {
-  if (!authStore.isLogin) {
-    alert('로그인이 필요합니다.')
-    router.push({ name: 'login' })
-    return
-  }
-
   if (!newComment.value.trim()) return
-
   const res = await api.post(
     `/api/v1/posts/${postId}/comments/`,
     { content: newComment.value }
   )
-
   comments.value.unshift(res.data)
   newComment.value = ''
 }
 
-const isMyPost = computed(() => {
-  return (
-    authStore.isLogin &&
-    authStore.user &&
-    post.value &&
-    post.value.user_id === authStore.user.id
-  )
-})
+const deleteComment = async (id) => {
+  if (!confirm('댓글을 삭제할까요?')) return
+  await api.delete(`/api/v1/comments/${id}/`)
+  comments.value = comments.value.filter(c => c.id !== id)
+}
 
+const startEditComment = (comment) => {
+  editingId.value = comment.id
+  editContent.value = comment.content
+}
 
-const deletePost = async () => {
-  if (!confirm('정말 삭제하시겠습니까?')) return
+const cancelEdit = () => {
+  editingId.value = null
+  editContent.value = ''
+}
 
-  try {
-    await api.delete(`/api/v1/posts/${postId}/`)
-    alert('삭제되었습니다.')
-    router.push('/posts')
-  } catch (e) {
-    alert('삭제 권한이 없습니다.')
-  }
+const confirmEditComment = async (id) => {
+  const res = await api.patch(`/api/v1/comments/${id}/`, {
+    content: editContent.value,
+  })
+  const idx = comments.value.findIndex(c => c.id === id)
+  comments.value[idx] = res.data
+  cancelEdit()
 }
 
 onMounted(() => {
   fetchPost()
   fetchComments()
-  
 })
 </script>
 
 <style scoped>
-.top-space {
-  height: 30px;
-}
-
 .post-detail {
   max-width: 900px;
-  margin: 0 auto;
+  margin: 40px auto;
+  padding: 0 20px;
 }
 
-.loading {
-  text-align: center;
-  padding: 40px;
-  color: #999;
+/* ================= 게시글 ================= */
+.post-box {
+  border-bottom: 2px solid #e6edff;
+  padding-bottom: 40px;
 }
 
 .category {
-  display: inline-block;
-  background: #cfe0ff;
-  color: #6393F2;
+  background: #dbeafe;
+  color: #6393f2;
   padding: 4px 14px;
-  border-radius: 16px;
+  border-radius: 999px;
   font-size: 13px;
+  display: inline-block;
+  margin-bottom: 12px;
 }
 
-.title {
-  margin-top: 12px;
-  font-size: 22px;
-  font-weight: 700;
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.post-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  color: #6393f2;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.action-btn.danger {
+  color: #ef4444;
 }
 
 .meta {
-  margin: 8px 0 20px;
   font-size: 13px;
   color: #777;
+  margin: 10px 0 24px;
 }
 
 .content {
   line-height: 1.7;
-  margin-bottom: 40px;
 }
 
+/* ================= 댓글 영역 ================= */
 .comment-section {
-  border-top: 2px solid #e6edff;
-  padding-top: 30px;
+  margin-top: 60px; /* 🔥 게시글이랑 충분히 띄움 */
 }
 
-.no-comment {
-  color: #999;
+.comment-title {
+  font-size: 18px;
+  font-weight: 700;
   margin-bottom: 20px;
 }
 
-.comment-section ul {
-  list-style: none;
-  padding: 0;
+/* 댓글 작성 */
+.comment-form {
+  margin-bottom: 50px; /* 🔥 댓글 목록과 간격 */
 }
 
-.comment-section li {
-  padding: 16px 0;
+.comment-textarea {
+  width: 100%;
+  height: 130px;
+  border: 1px solid #d6e0ff;
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 14px;
+  box-sizing: border-box;
+  resize: vertical;
+  margin-top: 10px; /* 🔥 placeholder랑 간격 */
+}
+
+.comment-textarea:focus {
+  outline: none;
+  border-color: #6393f2;
+}
+
+.comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px; /* 🔥 textarea랑 버튼 분리 */
+}
+
+.primary-btn {
+  background: #6393f2;
+  color: white;
+  border: none;
+  border-radius: 18px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/* ================= 댓글 목록 ================= */
+.comment-list li {
   border-bottom: 1px solid #eef2ff;
+  padding: 24px 0;
 }
 
 .comment-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+}
+
+/* 🔥 댓글 작성자 + 날짜 (게시글 meta와 통일) */
+.comment-meta {
   font-size: 13px;
-  color: #555;
+  color: #777;
 }
 
-.comment-form {
-  margin-top: 30px;
+.comment-meta strong {
+  font-weight: 600;
+  color: #111;
+  margin-right: 6px;
 }
 
-.comment-form textarea {
-  width: 100%;
-  height: 90px;
-  border: 1px solid #d6e0ff;
-  border-radius: 8px;
-  padding: 12px;
+.comment-actions {
+  display: flex;
+  gap: 12px;
 }
 
-.comment-form button {
+.comment-actions .action-btn {
+  font-size: 12px;
+}
+
+/* 댓글 내용 */
+.comment-content {
   margin-top: 10px;
-  margin-left: auto;
-  display: block;
-  background: #6393F2;
-  color: white;
-  border: none;
-  border-radius: 18px;
-  padding: 8px 20px;
-  cursor: pointer;
+  line-height: 1.6;
 }
-.delete-btn {
-  margin-left: auto;
-  background: #ef4444;
-  color: white;
-  border: none;
+
+/* ================= 댓글 수정 ================= */
+.edit-box {
+  margin-top: 12px; /* 🔥 글자랑 textarea 분리 */
+}
+
+.edit-textarea {
+  width: 100%;
+  height: 110px;
+  border: 1px solid #d6e0ff;
   border-radius: 12px;
-  padding: 6px 14px;
-  cursor: pointer;
+  padding: 14px;
+  font-size: 14px;
+  box-sizing: border-box;
+  resize: vertical;
+  margin-top: 8px;
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 </style>

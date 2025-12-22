@@ -1,5 +1,6 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from django.db.models import Count, Q
 from .models import Post, Comment
 from .serializers import (
     PostListSerializer,
@@ -18,11 +19,19 @@ class PostListCreateView(generics.ListCreateAPIView):
             comment_count=Count('comments')
         ).order_by('-created_at')
 
+        # 카테고리 필터
         category = self.request.query_params.get('category')
         if category:
-            category = category.rstrip('/') 
+            category = category.rstrip('/')
             queryset = queryset.filter(category=category)
 
+        # 🔍 검색 필터 (제목 OR 내용)
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) |
+                Q(content__icontains=search)
+            )
         return queryset
 
     def get_serializer_class(self):
