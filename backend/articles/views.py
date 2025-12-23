@@ -61,11 +61,26 @@ class PostListCreateView(generics.ListCreateAPIView):
 class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Post.objects.all()
     serializer_class = PostDetailSerializer
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_permissions(self):
         if self.request.method in ['PATCH', 'DELETE']:
             return [permissions.IsAuthenticated(), IsOwner()]
         return []
+    
+    def perform_update(self, serializer):
+        post = serializer.save()
+
+        images = self.request.FILES.getlist('images')
+
+        if images:
+            # 기존 이미지 삭제
+            PostImage.objects.filter(post=post).delete()
+
+            # 새 이미지 저장
+            for image in images:
+                PostImage.objects.create(post=post, image=image)
+
 
 
 # 댓글 목록, 작성
