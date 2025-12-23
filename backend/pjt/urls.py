@@ -3,6 +3,8 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('auth/', include('accounts.urls')),
@@ -11,3 +13,8 @@ urlpatterns = [
     path('api/v1/auth/login/', TokenObtainPairView.as_view()),
     path('api/v1/auth/refresh/', TokenRefreshView.as_view()),
 ]
+if settings.DEBUG:
+    urlpatterns += static(
+        settings.MEDIA_URL,
+        document_root=settings.MEDIA_ROOT
+    )
