@@ -117,7 +117,7 @@ const handleSignup = async () => {
   ) return
 
   try {
-    // 회원가입
+    // 1. 회원가입
     await signup({
       email: email.value,
       password: password.value,
@@ -125,35 +125,32 @@ const handleSignup = async () => {
       age: age.value,
     })
 
-    // 바로 로그인
+    // 2. 바로 로그인
     const res = await login({
       email: email.value,
       password: password.value,
     })
 
+    // 3. 토큰 + 유저 정보 모두 저장
     authStore.setToken(res.data.access_token)
+    authStore.setUser({
+      id: res.data.user.id,
+      name: res.data.user.name,
+      email: res.data.user.email,
+    })
 
     router.push({ name: 'home' })
   } catch (err) {
-  const data = err.response?.data
+    const data = err.response?.data
 
-  // 비밀번호 에러
-  if (data?.password) {
-    errors.password = data.password.join(' ')
-  }
-
-  // 이메일 에러
-  if (data?.email) {
-    errors.email = data.email.join(' ')
-  }
-
-  // 기타 에러
-  if (!data?.password && !data?.email) {
-    alert('회원가입에 실패했습니다.')
+    if (data?.password) errors.password = data.password.join(' ')
+    if (data?.email) errors.email = data.email.join(' ')
+    if (!data?.password && !data?.email) {
+      alert('회원가입에 실패했습니다.')
+    }
   }
 }
 
-}
 
 const goLogin = () => router.push('/login')
 </script>

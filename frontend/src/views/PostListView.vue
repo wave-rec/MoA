@@ -77,22 +77,31 @@ import { usePostStore } from '@/stores/posts'
 const router = useRouter()
 const store = usePostStore()
 
+/* 게시글 목록 */
 const posts = computed(() => store.posts)
+
+/* 카테고리 */
 const currentCategory = ref(null)
 
+/* 검색 */
 const searchKeyword = ref('')
+const currentPage = ref(1)
+
 const searchPosts = () => {
   currentPage.value = 1
   store.fetchPosts(currentCategory.value, searchKeyword.value, 1)
 }
-const currentPage = ref(1)
 
-const totalPages = computed(() => Math.ceil(store.count / 10))
+/* 페이지 수 */
+const totalPages = computed(() => Math.ceil(store.count / store.pageSize))
 
-const changePage = (page) => {
+/* 페이지 이동 */
+const goPage = (page) => {
+  currentPage.value = page
   store.fetchPosts(currentCategory.value, searchKeyword.value, page)
 }
 
+/* 카테고리 목록 */
 const categories = [
   { label: '전체', value: null },
   { label: '예금', value: 'DEPOSIT' },
@@ -100,32 +109,38 @@ const categories = [
   { label: '기타', value: 'ETC' },
 ]
 
+/* 카테고리 선택 */
 const selectCategory = (category) => {
   currentCategory.value = category
   currentPage.value = 1
   store.fetchPosts(category, searchKeyword.value, 1)
 }
 
-
-
+/* 상세 페이지 이동 */
 const goDetail = (id) => {
   router.push(`/posts/${id}`)
 }
 
+/* 글쓰기 버튼 (로그인 체크) */
 const goCreate = () => {
-  router.push('/posts/create')
+  const token = localStorage.getItem('access_token')
+
+  if (!token) {
+    router.push({
+      path: '/login',
+      query: { redirect: '/posts/create' },
+    })
+  } else {
+    router.push('/posts/create')
+  }
 }
 
-const goPage = (page) => {
-  currentPage.value = page
-  store.fetchPosts(currentCategory.value, searchKeyword.value, page)
-}
-
-
+/* 초기 로딩 */
 onMounted(() => {
   store.fetchPosts()
 })
 </script>
+
 
 <style scoped>
 /* 전체 */

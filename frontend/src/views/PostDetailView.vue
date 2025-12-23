@@ -17,13 +17,13 @@
 
       <div class="meta">
         <span class="author">{{ post.user_name }}</span>
-        <span class="date">{{ post.created_at?.slice(0, 10) }}</span>
+        <span class="date">{{ formatDate(post.created_at) }}</span>
       </div>
 
       <!-- 글 내용 -->
       <p class="content">{{ post.content }}</p>
 
-      <!-- 사진 출력 (추가된 부분) -->
+      <!-- 사진 출력 -->
       <div v-if="post.images && post.images.length">
         <img
           v-for="img in post.images"
@@ -61,7 +61,7 @@
             <div class="comment-info">
               <strong>{{ comment.user_name }}</strong>
               <span class="comment-date">
-                {{ comment.created_at?.slice(0,16).replace('T',' ') }}
+                {{ formatDate(comment.created_at) }}
               </span>
             </div>
 
@@ -112,6 +112,19 @@ const newComment = ref('')
 const editingId = ref(null)
 const editContent = ref('')
 
+const formatDate = (utcString) => {
+  if (!utcString) return ''
+  const date = new Date(utcString)
+  return date.toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 const safeComments = computed(() =>
   Array.isArray(comments.value) ? comments.value : []
 )
@@ -123,7 +136,7 @@ const isMyPost = computed(() =>
 const isMyComment = (comment) =>
   authStore.isLogin && comment.user_name === authStore.user?.name
 
-/* 이미지 URL 처리 (추가) */
+/* 이미지 URL */
 const getImageUrl = (path) => {
   if (!path) return ''
   if (path.startsWith('http')) return path
@@ -153,11 +166,21 @@ const fetchComments = async () => {
 }
 
 const submitComment = async () => {
+  if (!authStore.isLogin) {
+    router.push({
+      path: '/login',
+      query: { redirect: route.fullPath },
+    })
+    return
+  }
+
   if (!newComment.value.trim()) return
+
   const res = await api.post(
     `/api/v1/posts/${postId}/comments/`,
     { content: newComment.value }
   )
+
   comments.value.unshift(res.data)
   newComment.value = ''
 }
@@ -192,7 +215,6 @@ onMounted(() => {
   fetchComments()
 })
 </script>
-
 
 <style scoped>
 .post-detail {
@@ -271,7 +293,7 @@ onMounted(() => {
 .comment-info {
   display: flex;
   align-items: center;
-  gap: 8px;   /* ← 여기서 간격 조절 */
+  gap: 8px;  
 }
 
 .comment-textarea {
@@ -283,7 +305,7 @@ onMounted(() => {
   font-size: 14px;
   box-sizing: border-box;
   resize: vertical;
-  margin-top: 10px; /* placeholder랑 간격 */
+  margin-top: 10px; 
 }
 
 .comment-textarea:focus {
@@ -294,7 +316,7 @@ onMounted(() => {
 .comment-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 14px; /* 🔥 textarea랑 버튼 분리 */
+  margin-top: 14px; 
 }
 
 .primary-btn {

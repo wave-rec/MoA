@@ -37,7 +37,7 @@
         ></textarea>
       </div>
 
-      <!-- 🔥 이미지 수정 (추가된 부분) -->
+      <!-- 이미지 수정 (추가된 부분) -->
       <div class="form-row">
         <label>이미지</label>
         <input
@@ -72,7 +72,7 @@ const selectedCategory = ref('예금')
 const title = ref('')
 const content = ref('')
 
-/* 🔥 추가: 선택한 이미지들 */
+/* 추가: 선택한 이미지들 */
 const selectedImages = ref([])
 
 const categoryMap = {
@@ -95,7 +95,7 @@ const fetchPost = async () => {
   selectedCategory.value = reverseCategoryMap[res.data.category]
 }
 
-/* 🔥 추가: 이미지 선택 핸들러 */
+/* 추가: 이미지 선택 핸들러 */
 const onImageChange = (e) => {
   selectedImages.value = Array.from(e.target.files)
 }
@@ -109,7 +109,7 @@ const submitEdit = async () => {
   }
 
   try {
-    /* 🔥 FormData로 변경 */
+    /* FormData로 변경 */
     const formData = new FormData()
     formData.append('title', title.value)
     formData.append('content', content.value)
@@ -139,8 +139,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* ⚠️ 스타일은 기존 그대로 */
-
 .post-create {
   max-width: 900px;
   margin: 0 auto;
@@ -200,7 +198,6 @@ onMounted(() => {
   cursor: pointer;
 }
 
-/* select 화살표 커스텀 */
 select {
   appearance: none;
   -webkit-appearance: none;
