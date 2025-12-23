@@ -188,7 +188,7 @@ onUnmounted(() => {
 <style scoped>
 .main-view {
   background: #fafafa;
-  padding: 80px 0 40px;
+  padding: 50px 0 40px;
 }
 
 .main-content {
@@ -300,17 +300,17 @@ onUnmounted(() => {
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 18px; /* 20px → 18px */
+  gap: 18px;
   height: 100%;
 }
 
 /* 금은시세 카드 */
 .exchange-card {
-  border-radius: 18px; /* 20px → 18px */
+  border-radius: 18px;
   cursor: pointer;
   transition: all 0.3s;
   box-shadow: 0 4px 16px rgba(99, 147, 242, 0.3);
-  min-height: 240px; /* 260px → 240px */
+  min-height: 240px;
   overflow: hidden;
 }
 
@@ -332,11 +332,12 @@ onUnmounted(() => {
 .board-card {
   background: white;
   border-radius: 18px;
-  padding: 20px;
+  padding: 16px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
-  flex: 1;
+  height: 500px;
+  flex: none;
 }
 
 .board-header {
@@ -394,26 +395,25 @@ onUnmounted(() => {
 }
 
 .board-list {
+  margin-top: 5px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   flex: 1;
   overflow: hidden;
-  justify-content: space-between;
+  justify-content: flex-start;
 }
 
 .board-item {
   display: grid;
-  grid-template-columns: 45px 1fr auto;
+  grid-template-columns: 42px 1fr auto;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 10px;
+  gap: 6px;
+  padding: 4px 10px;
+  height: 32px;
+  border-radius: 6px;
   background: #f9fafb;
-  cursor: pointer;
-  transition: all 0.2s;
-  flex: 1;
-  max-height: 45px;
+  flex: none;
 }
 
 .board-item:hover {
@@ -423,8 +423,8 @@ onUnmounted(() => {
 
 .post-category {
   display: inline-block;
-  padding: 3px 8px;
-  border-radius: 8px;
+  padding: 3px 6px;
+  border-radius: 6px;
   font-size: 10px;
   font-weight: 700;
   text-align: center;
@@ -447,7 +447,7 @@ onUnmounted(() => {
 }
 
 .post-title {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   color: #111827;
   margin: 0;
