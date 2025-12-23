@@ -37,6 +37,16 @@
         ></textarea>
       </div>
 
+      <!-- 🔥 이미지 수정 (추가된 부분) -->
+      <div class="form-row">
+        <label>이미지</label>
+        <input
+          type="file"
+          multiple
+          @change="onImageChange"
+        />
+      </div>
+
       <!-- 버튼 -->
       <button class="submit-btn" @click="submitEdit">
         수정 완료
@@ -62,6 +72,9 @@ const selectedCategory = ref('예금')
 const title = ref('')
 const content = ref('')
 
+/* 🔥 추가: 선택한 이미지들 */
+const selectedImages = ref([])
+
 const categoryMap = {
   예금: 'DEPOSIT',
   적금: 'SAVINGS',
@@ -82,6 +95,11 @@ const fetchPost = async () => {
   selectedCategory.value = reverseCategoryMap[res.data.category]
 }
 
+/* 🔥 추가: 이미지 선택 핸들러 */
+const onImageChange = (e) => {
+  selectedImages.value = Array.from(e.target.files)
+}
+
 /* 수정 요청 */
 const submitEdit = async () => {
   if (!authStore.isLogin) {
@@ -91,10 +109,20 @@ const submitEdit = async () => {
   }
 
   try {
-    await api.patch(`/api/v1/posts/${postId}/`, {
-      title: title.value,
-      content: content.value,
-      category: categoryMap[selectedCategory.value],
+    /* 🔥 FormData로 변경 */
+    const formData = new FormData()
+    formData.append('title', title.value)
+    formData.append('content', content.value)
+    formData.append('category', categoryMap[selectedCategory.value])
+
+    selectedImages.value.forEach(img => {
+      formData.append('images', img)
+    })
+
+    await api.patch(`/api/v1/posts/${postId}/`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     })
 
     alert('게시글이 수정되었습니다.')
@@ -111,6 +139,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* ⚠️ 스타일은 기존 그대로 */
+
 .post-create {
   max-width: 900px;
   margin: 0 auto;

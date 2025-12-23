@@ -134,9 +134,25 @@ const handleSignup = async () => {
     authStore.setToken(res.data.access_token)
 
     router.push({ name: 'home' })
-  } catch {
-    alert('회원가입 실패')
+  } catch (err) {
+  const data = err.response?.data
+
+  // 비밀번호 에러
+  if (data?.password) {
+    errors.password = data.password.join(' ')
   }
+
+  // 이메일 에러
+  if (data?.email) {
+    errors.email = data.email.join(' ')
+  }
+
+  // 기타 에러
+  if (!data?.password && !data?.email) {
+    alert('회원가입에 실패했습니다.')
+  }
+}
+
 }
 
 const goLogin = () => router.push('/login')
