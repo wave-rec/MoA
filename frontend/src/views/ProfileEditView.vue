@@ -63,14 +63,14 @@ onMounted(async () => {
 // 저장 버튼 하나로 처리
 const submitAll = async () => {
   try {
-    // 1️⃣ 프로필 정보 수정
+    // 프로필 정보 수정
     await updateMyInfo({
       name: name.value,
       age: age.value,
       email: email.value,
     })
 
-    // 2️⃣ 비밀번호 변경 (선택)
+    // 비밀번호 변경 (선택)
     if (currentPassword.value || newPassword.value) {
       if (!currentPassword.value || !newPassword.value) {
         alert('비밀번호를 변경하려면 현재/새 비밀번호를 모두 입력해주세요')
