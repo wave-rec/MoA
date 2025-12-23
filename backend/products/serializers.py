@@ -84,8 +84,24 @@ class ProductRecommendRequestSerializer(serializers.Serializer):
     limit = serializers.IntegerField(required=False, min_value=1, max_value=50, default=10)
 
 class AIAnalysisRequestSerializer(serializers.Serializer):
-    amount = serializers.IntegerField(min_value=1000000, required=True)
-    months = serializers.IntegerField(min_value=1, max_value=60, required=True)
+    amount = serializers.IntegerField(
+        required=True,
+        min_value=10000,
+        error_messages={
+            'required': '금액을 입력해주세요.',
+            'invalid': '유효한 금액을 입력해주세요.',
+            'min_value': '최소 1만원 이상 입력해주세요.',
+        }
+    )
+    months = serializers.IntegerField(
+        required=True,
+        min_value=1,
+        max_value=60,
+        error_messages={
+            'required': '기간을 입력해주세요.',
+            'invalid': '유효한 기간을 입력해주세요.',
+        }
+    )
 
 class AIAnalysisResponseSerializer(serializers.Serializer):
     summary = serializers.CharField()

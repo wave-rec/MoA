@@ -84,25 +84,43 @@
             </div>
           </div>
           <div class="maturity-badge">
-            <span class="badge-label">목표 달성률</span>
-            <span class="badge-value">{{ maturityRate }}%</span>
+            <span class="badge-label">예상 수익률</span>
+            <span class="badge-value">{{ returnRate }}%</span>
           </div>
         </div>
 
         <!-- 우대조건 -->
         <div class="preferential-card">
           <h3 class="card-title">우대조건</h3>
-          <div v-if="product.prefer_condition_text" class="preferential-list">
-            <div
-              v-for="(condition, idx) in parsePreferentialConditions(product.prefer_condition_text)"
-              :key="idx"
-              class="preferential-item"
-            >
-              <span class="preferential-text">{{ condition.text }}</span>
-              <span class="preferential-rate">{{ condition.rate }}</span>
-            </div>
+          <div class="preferential-list">
+            <template v-if="aiPreferBenefits && aiPreferBenefits.length > 0">
+              <div
+                v-for="(benefit, idx) in aiPreferBenefits"
+                :key="'ai-' + idx"
+                class="preferential-item basic-gray"
+              >
+                <div class="benefit-row">
+                  <span class="check-icon">✓</span>
+                  <span class="preferential-text">{{ benefit }}</span>
+                </div>
+              </div>
+            </template>
+
+            <template v-else-if="product.prefer_condition_text">
+              <div
+                v-for="(condition, idx) in parsePreferentialConditions(
+                  product.prefer_condition_text,
+                )"
+                :key="'orig-' + idx"
+                class="preferential-item basic-gray"
+              >
+                <span class="preferential-text">{{ condition.text }}</span>
+                <span class="preferential-rate" v-if="condition.rate">{{ condition.rate }}</span>
+              </div>
+            </template>
+
+            <p v-else class="no-preferential">우대조건 정보가 없습니다.</p>
           </div>
-          <p v-else class="no-preferential">우대조건 정보가 없습니다.</p>
         </div>
       </div>
 
@@ -150,31 +168,48 @@
     </div>
 
     <!-- AI 상세 분석 모달 -->
-    <div v-if="showAIDetailModal" class="modal-overlay" @click="showAIDetailModal = false">
-      <div class="modal-content" @click.stop>
+    <div v-if="showAIDetailModal" class="modal-overlay" @click.self="showAIDetailModal = false">
+      <div class="modal-content">
         <div class="modal-header">
-          <h3>AI 상세 분석</h3>
-          <button class="modal-close" @click="showAIDetailModal = false">✕</button>
+          <h3>🤖 AI 상품 정밀 분석</h3>
+          <button class="modal-close" @click="showAIDetailModal = false">×</button>
         </div>
+
         <div class="modal-body">
           <div class="ai-analysis-section">
-            <h4>📊 종합 분석</h4>
-            <p>{{ aiDetailedAnalysis?.trim() }}</p>
+            <h4>📊 맞춤형 종합 분석</h4>
+            <p class="analysis-text">{{ aiDetailedAnalysis }}</p>
           </div>
 
-          <div class="ai-analysis-section">
-            <h4>💡 추천 이유</h4>
+          <div class="ai-analysis-section" v-if="aiPreferBenefits && aiPreferBenefits.length > 0">
+            <h4>✨ 놓치면 안 될 우대 혜택</h4>
+            <ul class="ai-reasons benefit-list">
+              <li v-for="(benefit, idx) in aiPreferBenefits" :key="'modal-b-' + idx">
+                {{ benefit }}
+              </li>
+            </ul>
+          </div>
+
+          <div class="ai-analysis-section" v-if="aiReasons && aiReasons.length > 0">
+            <h4>💡 {{ authStore.userNickname || '고객' }}님께 추천하는 이유</h4>
             <ul class="ai-reasons">
-              <li v-for="(reason, idx) in aiReasons" :key="idx">{{ reason }}</li>
+              <li v-for="(reason, idx) in aiReasons" :key="'modal-r-' + idx">
+                {{ reason }}
+              </li>
             </ul>
           </div>
 
           <div class="ai-analysis-section">
-            <h4>⚠️ 주의사항</h4>
-            <p>{{ aiWarning }}</p>
+            <h4>⚠️ 가입 전 유의사항</h4>
+            <p class="warning-text">{{ aiWarning }}</p>
           </div>
 
-          <p class="ai-disclaimer">* AI 분석 결과는 참고용이며, 실제 금융 상담을 권장합니다.</p>
+          <div class="ai-footer">
+            <p class="ai-disclaimer">
+              * 위 분석은 입력하신 정보를 바탕으로 생성된 AI의 의견이며, 실제 금리 및 혜택은 가입
+              시점에 다를 수 있습니다.
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -206,9 +241,16 @@ const aiDetailedAnalysis = ref('')
 const aiReasons = ref([])
 const aiWarning = ref('')
 
-// 추천 페이지에서 전달받은 값
-const targetAmount = ref(Number(route.query.amount) || 1000000)
-const targetMonths = ref(Number(route.query.months) || 12)
+const getInitialAmount = () => {
+  const amt = Number(route.query.amount)
+  if (!amt || isNaN(amt) || amt < 10000) {
+    return 1000000
+  }
+  return Math.floor(amt)
+}
+
+const targetAmount = ref(getInitialAmount())
+const targetMonths = ref(parseInt(route.query.months) || 12)
 
 const productTypeLabel = computed(() => {
   return product.value?.type === 'DEPOSIT' ? '예금' : '적금'
@@ -223,25 +265,44 @@ const sortedRates = computed(() => {
 const expectedAmount = computed(() => {
   if (!product.value) return { base: 0, max: 0 }
 
-  const principal = targetAmount.value
+  const amount = targetAmount.value
   const months = targetMonths.value
-  const baseRate = product.value.base_rate / 100 / 12
-  const maxRate = product.value.max_rate / 100 / 12
 
-  // 복리 계산 (월복리)
-  const baseAmount = Math.round(principal * Math.pow(1 + baseRate, months))
-  const maxAmount = Math.round(principal * Math.pow(1 + maxRate, months))
-
-  return {
-    base: baseAmount,
-    max: maxAmount,
+  if (product.value.type === 'DEPOSIT') {
+    const calc = (rate) => {
+      const interest = amount * (rate / 100) * (months / 12)
+      return Math.round(amount + interest)
+    }
+    return {
+      base: calc(product.value.base_rate),
+      max: calc(product.value.max_rate),
+    }
+  } else {
+    const calc = (monthly, rate) => {
+      const totalPrincipal = monthly * months
+      const interest = monthly * ((months * (months + 1)) / 2) * (rate / 100 / 12)
+      return Math.round(totalPrincipal + interest)
+    }
+    return {
+      base: calc(amount, product.value.base_rate),
+      max: calc(amount, product.value.max_rate),
+    }
   }
 })
 
-// 목표 달성률 계산
-const maturityRate = computed(() => {
-  const rate = (expectedAmount.value.max / targetAmount.value) * 100
-  return Math.round(rate)
+// 예상 수익률 계산
+const returnRate = computed(() => {
+  if (!product.value) return '0.00'
+
+  const actualTotalPrincipal =
+    product.value.type === 'SAVINGS' ? targetAmount.value * targetMonths.value : targetAmount.value
+
+  const netProfit = expectedAmount.value.max - actualTotalPrincipal
+
+  if (actualTotalPrincipal === 0) return '0.00'
+  const rate = (netProfit / actualTotalPrincipal) * 100
+
+  return rate.toFixed(2)
 })
 
 const formatRate = (rate) => {
@@ -317,6 +378,8 @@ const parsePreferentialConditions = (text) => {
   })
 }
 
+const aiPreferBenefits = ref([])
+
 // 백엔드 AI 분석 API 호출
 const fetchAIAnalysis = async () => {
   aiLoading.value = true
@@ -330,44 +393,33 @@ const fetchAIAnalysis = async () => {
       config.headers.Authorization = `Token ${authStore.accessToken}`
     }
 
-    const res = await apiClient.post(
-      `/products/${productId}/ai-analysis/`,
-      {
-        amount: targetAmount.value,
-        months: targetMonths.value,
-      },
-      config,
-    )
+    let amount = parseInt(targetAmount.value, 10)
+    const months = parseInt(targetMonths.value, 10)
 
+    const payload = {
+      amount: amount,
+      months: months,
+    }
+
+    const res = await apiClient.post(`/products/${productId}/ai-analysis/`, payload, config)
+    console.log('백엔드 AI 응답 전체 데이터:', res.data)
+    console.log('우대조건 배열 확인:', res.data.prefer_benefits)
     const data = res.data
+
     const refineText = (text, fallback) => {
       if (!text) return fallback
-
-      let t = text.trim()
-
-      t = t.replace(/\*\*/g, '')
-
+      let t = text.trim().replace(/\*\*/g, '')
       const userName = authStore.userNickname || '고객'
       t = t.replace(/고객님/g, `${userName}님`)
-
       t = t
         .replace(/잖아요/g, '입니다')
         .replace(/해요/g, '합니다')
         .replace(/시기이기도 합니다/g, '시기입니다')
 
-      if (t.endsWith('최대')) {
-        t += ' 금리 혜택을 제공합니다'
-      }
-
-      t = t.trim()
-
       if (t.length > 0) {
         t = t.replace(/\.+$/, '.')
-        if (!/[.!?]$/.test(t)) {
-          t += '.'
-        }
+        if (!/[.!?]$/.test(t)) t += '.'
       }
-
       return t
     }
 
@@ -381,6 +433,9 @@ const fetchAIAnalysis = async () => {
       data.reasons?.length > 0
         ? data.reasons.map((r) => refineText(r))
         : ['경쟁력 있는 금리', '안정적인 운영', '편리한 가입']
+
+    aiPreferBenefits.value =
+      data.prefer_benefits?.length > 0 ? data.prefer_benefits.map((b) => refineText(b)) : []
   } catch (e) {
     console.error('AI 분석 조회 오류:', e)
     const status = e?.response?.status
@@ -397,6 +452,10 @@ const fetchAIAnalysis = async () => {
 const fetchProductDetail = async () => {
   loading.value = true
   error.value = ''
+  aiSummary.value = ''
+  aiDetailedAnalysis.value = ''
+  aiReasons.value = []
+  aiPreferBenefits.value = []
 
   try {
     const productId = route.params.id
@@ -444,10 +503,6 @@ const handleSubscribe = async () => {
     subscribing.value = false
   }
 }
-
-onMounted(() => {
-  fetchProductDetail()
-})
 
 const shortBankName = (name) => {
   if (!name) return name
@@ -866,43 +921,84 @@ onMounted(() => {
 /* 우대조건 카드 */
 .preferential-card {
   background: white;
-  border-radius: 20px;
+  border-radius: 16px;
   padding: 24px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
-
 .preferential-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
-.preferential-item {
+.card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 20px;
+}
+
+.preferential-item.basic-gray {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px;
-  background: #f9fafb;
-  border-radius: 12px;
+  padding: 14px 18px;
+  background-color: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  transition: background-color 0.2s;
+}
+
+.preferential-item.basic-gray:hover {
+  background-color: #f9fafb;
+}
+.preferential-item.ai-refined {
+  background: #f0f7ff;
+  border: 1px solid #dbeafe;
+  border-left: 4px solid #6393f2;
+  transition: transform 0.2s;
+}
+
+.preferential-item.ai-refined:hover {
+  transform: translateX(5px);
+}
+
+.ai-refined .preferential-text {
+  font-weight: 600;
+  color: #1e40af;
 }
 
 .preferential-text {
   font-size: 14px;
-  color: #4a5568;
-  flex: 1;
+  color: #374151;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 .preferential-rate {
   font-size: 14px;
   font-weight: 700;
   color: #6393f2;
+  margin-left: 10px;
+  white-space: nowrap;
 }
 
 .no-preferential {
   text-align: center;
   color: #9ca3af;
   padding: 20px;
-  margin: 0;
+}
+
+.benefit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.check-icon {
+  color: #6393f2;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 /* 금리 정보 테이블 */
@@ -1105,7 +1201,8 @@ onMounted(() => {
   padding: 8px 0;
   color: #4a5568;
   position: relative;
-  padding-left: 20px;
+  padding-left: 28px;
+  line-height: 1.6;
 }
 
 .ai-reasons li::before {
@@ -1115,7 +1212,6 @@ onMounted(() => {
   color: #6393f2;
   font-weight: 700;
 }
-
 .ai-disclaimer {
   font-size: 12px;
   color: #9ca3af;

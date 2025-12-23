@@ -57,18 +57,15 @@
     <!-- 카드 2: 조건 -->
     <section class="card card-filter">
       <!-- 매칭 상품 개수 표시 -->
-      <div v-if="matchingCount !== null && targetAmount >= 1000000" class="match-info">
+      <div v-if="matchingCount !== null && targetAmount >= 100000" class="match-info">
         <span v-if="countLoading" class="match-loading">
           <span class="spinner-small"></span> 확인 중...
         </span>
         <span v-else-if="matchingCount > 0" class="match-success">
           ✓ 현재 조건에 맞는 상품 <strong>{{ matchingCount }}개</strong>
         </span>
-        <span v-else class="match-warning">
-          ⚠️ 조건에 맞는 상품이 없습니다. 다른 조건을 선택해보세요.
-        </span>
+        <span v-else class="match-warning"> ⚠️ 조건에 맞는 상품이 없습니다. </span>
       </div>
-
       <!-- 기간 -->
       <div class="row">
         <div class="label">기간</div>
@@ -86,17 +83,43 @@
         </div>
       </div>
 
-      <!-- 금액 -->
-      <div class="row">
-        <div class="label">금액</div>
-        <div class="control">
-          <input
-            class="input"
-            type="text"
-            v-model="amountDisplay"
-            @input="updateAmount"
-            placeholder="100만원 이상의 금액을 입력해주세요"
-          />
+      <!-- 예금일 때 -->
+      <div v-if="type === 'deposit'">
+        <div class="row">
+          <div class="label">입금 금액</div>
+          <div class="control">
+            <div class="input-group">
+              <input
+                class="input"
+                type="text"
+                :value="depositAmountDisplay"
+                @input="updateDepositAmount"
+                placeholder="10 ~ 10000"
+              />
+              <span class="input-unit">만원</span>
+            </div>
+            <p v-if="depositAmountError" class="error-text">{{ depositAmountError }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 적금일 때 -->
+      <div v-else>
+        <div class="row">
+          <div class="label">월 납입액</div>
+          <div class="control">
+            <div class="input-group">
+              <input
+                class="input"
+                type="text"
+                :value="savingsMonthlyDisplay"
+                @input="updateSavingsMonthly"
+                placeholder="1 ~ 500"
+              />
+              <span class="input-unit">만원/월</span>
+            </div>
+            <p v-if="savingsMonthlyError" class="error-text">{{ savingsMonthlyError }}</p>
+          </div>
         </div>
       </div>
 
@@ -266,13 +289,29 @@ import { useAuthStore } from '@/stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
+let debounceTimer = null
+
 const type = ref('deposit')
-const targetAmount = ref(0)
 const targetMonths = ref(12)
-const amountDisplay = ref('')
+
+const depositAmount = ref(0)
+const depositAmountDisplay = ref('')
+
+const savingsMonthly = ref(0)
+const savingsMonthlyDisplay = ref('')
+
+const targetAmount = computed(() => {
+  if (type.value === 'deposit') {
+    return depositAmount.value
+  } else {
+    return savingsMonthly.value * targetMonths.value
+  }
+})
+
+const depositAmountError = ref('')
+const savingsMonthlyError = ref('')
 
 const monthOptions = [1, 3, 6, 12, 24, 36]
-
 const results = ref([])
 const loading = ref(false)
 const error = ref('')
@@ -292,9 +331,27 @@ const selectedBank = ref('')
 const showAllBanks = ref(false)
 const isLogged = computed(() => !!authStore.user && !!authStore.accessToken)
 
+// 예금 예상 만기액 (평균 3% 기준)
+const estimatedDepositAmount = computed(() => {
+  if (depositAmount.value < 100000) return 0
+  const interest = depositAmount.value * 0.03 * (targetMonths.value / 12)
+  return Math.round(depositAmount.value + interest)
+})
+
+// 적금 예상 만기액 (평균 3% 기준)
+const estimatedSavingsAmount = computed(() => {
+  if (savingsMonthly.value < 10000) return 0
+  const monthly = savingsMonthly.value
+  const months = targetMonths.value
+  const totalPrincipal = monthly * months
+  const interest = monthly * ((months * (months + 1)) / 2) * (0.03 / 12)
+  return Math.round(totalPrincipal + interest)
+})
+
 const userName = computed(() => {
   return authStore.user?.name || '고객'
 })
+
 const welcomeMessage = computed(() => {
   if (isLogged.value) {
     return '고객님을 위한 맞춤형 분석 결과입니다.'
@@ -309,10 +366,16 @@ const displayBanks = computed(() => banks.value.slice(0, 5))
 const productLabel = computed(() => (type.value === 'deposit' ? '예금' : '적금'))
 
 const checkMatchingCount = async () => {
-  if (targetAmount.value < 1000000) {
-    alert('100만원 이상의 금액을 입력해주세요.')
-    matchingCount.value = null
-    return
+  if (type.value === 'deposit') {
+    if (depositAmount.value < 100000) {
+      matchingCount.value = null
+      return
+    }
+  } else {
+    if (savingsMonthly.value < 10000) {
+      matchingCount.value = null
+      return
+    }
   }
 
   countLoading.value = true
@@ -338,22 +401,34 @@ const checkMatchingCount = async () => {
 }
 
 watch(type, () => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+    debounceTimer = null
+  }
+
   selectedBank.value = ''
   isNonFaceToFace.value = null
   isDepositProtected.value = null
   showAllBanks.value = false
   targetMonths.value = 12
 
-  targetAmount.value = 0
-  amountDisplay.value = ''
+  depositAmount.value = 0
+  depositAmountDisplay.value = ''
+
+  savingsMonthly.value = 0
+  savingsMonthlyDisplay.value = ''
 
   results.value = []
   searched.value = false
   matchingCount.value = null
   error.value = ''
-
-  if (debounceTimer) clearTimeout(debounceTimer)
+  depositAmountError.value = ''
+  savingsMonthlyError.value = ''
 })
+
+const formatAmount = (amount) => {
+  return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+}
 
 watch([targetMonths, selectedBank, isNonFaceToFace, isDepositProtected], () => {
   if (matchingCount.value !== null) {
@@ -396,40 +471,63 @@ const shortBankName = (name) => {
   return nameMap[name] || name.replace('주식회사 ', '')
 }
 
-const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-
 const formatRate = (rate) => {
   if (rate === null || rate === undefined) return '-'
   return Number(rate).toFixed(2)
 }
 
-let debounceTimer = null
+//예금 입금 금액 업데이트
+const updateDepositAmount = (e) => {
+  const el = e.target
+  const rawValue = el.value.replace(/[^0-9]/g, '')
+  const numValue = rawValue ? parseInt(rawValue) : 0
 
-const updateAmount = (e) => {
-  const value = e.target.value.replace(/,/g, '')
-
-  if (!isNaN(value) && value !== '') {
-    targetAmount.value = parseInt(value)
-    amountDisplay.value = formatNumber(value)
-
-    if (targetAmount.value < 1000000) {
-      matchingCount.value = null
-      if (debounceTimer) clearTimeout(debounceTimer)
-      return
-    }
-
-    if (debounceTimer) clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(() => {
-      checkMatchingCount()
-    }, 500)
-  } else {
-    targetAmount.value = 0
-    amountDisplay.value = ''
-    matchingCount.value = null
-    results.value = []
-    searched.value = false
-    if (debounceTimer) clearTimeout(debounceTimer)
+  if (numValue > 10000 || rawValue.length > 5) {
+    depositAmountError.value = '⚠️ 최대 1억원(10,000만원)까지 입금 가능합니다.'
+    el.value = depositAmountDisplay.value
+    return
   }
+
+  depositAmountError.value = ''
+  depositAmountDisplay.value = rawValue ? rawValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''
+  depositAmount.value = numValue * 10000
+
+  if (numValue > 0 && numValue < 10) {
+    depositAmountError.value = '⚠️ 최소 10만원 이상 입력해주세요.'
+    matchingCount.value = null
+  }
+
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    if (depositAmount.value >= 100000) checkMatchingCount()
+  }, 1500)
+}
+
+//적금 월 납입액 업데이트
+const updateSavingsMonthly = (e) => {
+  const el = e.target
+  const rawValue = el.value.replace(/[^0-9]/g, '')
+  const numValue = rawValue ? parseInt(rawValue) : 0
+
+  if (numValue > 500 || rawValue.length > 3) {
+    savingsMonthlyError.value = '⚠️ 최대 월 500만원까지 납입 가능합니다.'
+    el.value = savingsMonthlyDisplay.value
+    return
+  }
+
+  savingsMonthlyError.value = ''
+  savingsMonthlyDisplay.value = rawValue ? rawValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''
+  savingsMonthly.value = numValue * 10000
+
+  if (numValue > 0 && numValue < 1) {
+    savingsMonthlyError.value = '⚠️ 최소 월 1만원 이상 입력해주세요.'
+    matchingCount.value = null
+  }
+
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    if (savingsMonthly.value >= 10000) checkMatchingCount()
+  }, 1500)
 }
 
 const applySorting = () => {
@@ -446,11 +544,14 @@ const applySorting = () => {
 }
 
 const goToDetail = (productId) => {
+  const amountToSend = type.value === 'savings' ? savingsMonthly.value : depositAmount.value
+
   router.push({
     path: `/products/${productId}`,
     query: {
-      amount: targetAmount.value,
-      months: targetMonths.value,
+      type: type.value,
+      amount: Math.floor(Number(amountToSend)),
+      months: parseInt(targetMonths.value),
     },
   })
 }
@@ -461,13 +562,31 @@ const recommend = async (isManualSearch = false) => {
     if (matchingCount.value === null) checkMatchingCount()
   }
 
-  try {
-    if (!targetAmount.value || targetAmount.value < 1000000) {
-      if (isManualSearch) error.value = '금액은 100만원 이상부터 가능합니다.'
+  if (type.value === 'deposit') {
+    if (depositAmount.value < 100000) {
+      depositAmountError.value = '⚠️ 한 번에 입금할 금액을 10만원 이상 입력해주세요.'
       results.value = []
       loading.value = false
       return
     }
+  } else {
+    if (savingsMonthly.value < 10000) {
+      savingsMonthlyError.value = '⚠️ 매월 납입 금액을 1만원 이상 입력해주세요.'
+      results.value = []
+      loading.value = false
+      return
+    }
+  }
+
+  try {
+    if (!targetAmount.value || targetAmount.value < 100000) {
+      if (isManualSearch) error.value = '금액을 정확히 입력해주세요.'
+      results.value = []
+      loading.value = false
+      return
+    }
+
+    loading.value = true
 
     const payload = {
       type: type.value,
@@ -802,26 +921,47 @@ const handleImageError = (e) => {
   flex-wrap: wrap;
 }
 
+.input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  max-width: 300px;
+}
+
 .input {
   flex: 1;
   height: 36px;
   border-radius: 12px;
   border: 1.5px solid #e5e7eb;
-  padding: 0 16px;
-  margin-right: 165px;
+  padding: 0 45px 0 12px;
+  margin-right: 0;
   font-size: 15px;
   transition: all 0.3s ease;
+  width: 100%;
 }
 
 .input:focus {
   border-color: #6393f2;
   box-shadow: 0 0 0 4px rgba(99, 147, 242, 0.15);
   background-color: #fff;
+  outline: none;
 }
 
 .input::placeholder {
   color: #9ca3af;
-  font-size: 12px;
+  font-size: 13px;
+}
+
+.input-unit {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7280;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .mini {
@@ -912,6 +1052,15 @@ const handleImageError = (e) => {
   margin-top: 10px;
   font-size: 13px;
   font-weight: 600;
+}
+
+.error-text {
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 6px 0 0 0;
+  padding: 0;
+  width: 100%;
 }
 
 .result-header {
@@ -1122,5 +1271,35 @@ const handleImageError = (e) => {
   margin: 0;
   font-weight: 500;
   font-family: 'Pretendard', sans-serif;
+}
+
+.estimated-box {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px solid #bae6fd;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 16px 0;
+}
+
+.estimated-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0284c7;
+  margin-bottom: 8px;
+}
+
+.estimated-value {
+  font-size: 20px;
+  font-weight: 900;
+  color: #0369a1;
+  line-height: 1.4;
+}
+
+.estimated-hint {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+  margin-top: 4px;
 }
 </style>
