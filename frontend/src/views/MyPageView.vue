@@ -31,12 +31,12 @@
     <section class="menu-grid">
       <div class="menu-card" @click="goEdit">
         <h3>회원정보 수정</h3>
-        <p>개인 정보 변경</p>
+        <p>개인 정보 및 비밀번호 변경</p>
       </div>
 
       <div class="menu-card" @click="goLikes">
-        <h3>찜 목록</h3>
-        <p>관심 상품 한눈에 보기</p>
+        <h3>가입 상품 목록</h3>
+        <p>가입 상품 한눈에 보기</p>
       </div>
       <div class="menu-card" @click="goPosts">
         <h3>내가 쓴 게시글</h3>

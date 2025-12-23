@@ -20,7 +20,18 @@
         <span class="date">{{ post.created_at?.slice(0, 10) }}</span>
       </div>
 
+      <!-- 글 내용 -->
       <p class="content">{{ post.content }}</p>
+
+      <!-- 사진 출력 (추가된 부분) -->
+      <div v-if="post.images && post.images.length">
+        <img
+          v-for="img in post.images"
+          :key="img.id"
+          :src="getImageUrl(img.image)"
+          style="display:block; max-width:100%; margin-top:12px;"
+        />
+      </div>
     </section>
 
     <!-- 댓글 -->
@@ -112,6 +123,13 @@ const isMyPost = computed(() =>
 const isMyComment = (comment) =>
   authStore.isLogin && comment.user_name === authStore.user?.name
 
+/* 이미지 URL 처리 (추가) */
+const getImageUrl = (path) => {
+  if (!path) return ''
+  if (path.startsWith('http')) return path
+  return `${api.defaults.baseURL}${path}`
+}
+
 /* 게시글 */
 const fetchPost = async () => {
   const res = await api.get(`/api/v1/posts/${postId}/`)
@@ -175,6 +193,7 @@ onMounted(() => {
 })
 </script>
 
+
 <style scoped>
 .post-detail {
   max-width: 900px;
@@ -222,9 +241,11 @@ onMounted(() => {
 }
 
 .meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;  
   font-size: 13px;
   color: #777;
-  margin: 10px 0 24px;
 }
 
 .content {
@@ -233,7 +254,7 @@ onMounted(() => {
 
 /* ================= 댓글 영역 ================= */
 .comment-section {
-  margin-top: 60px; /* 🔥 게시글이랑 충분히 띄움 */
+  margin-top: 60px; /* 게시글이랑 충분히 띄움 */
 }
 
 .comment-title {
@@ -244,7 +265,13 @@ onMounted(() => {
 
 /* 댓글 작성 */
 .comment-form {
-  margin-bottom: 50px; /* 🔥 댓글 목록과 간격 */
+  margin-bottom: 50px; /* 댓글 목록과 간격 */
+}
+
+.comment-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;   /* ← 여기서 간격 조절 */
 }
 
 .comment-textarea {
@@ -256,7 +283,7 @@ onMounted(() => {
   font-size: 14px;
   box-sizing: border-box;
   resize: vertical;
-  margin-top: 10px; /* 🔥 placeholder랑 간격 */
+  margin-top: 10px; /* placeholder랑 간격 */
 }
 
 .comment-textarea:focus {
@@ -292,7 +319,7 @@ onMounted(() => {
   align-items: center;
 }
 
-/* 🔥 댓글 작성자 + 날짜 (게시글 meta와 통일) */
+/* 댓글 작성자 + 날짜 (게시글 meta와 통일) */
 .comment-meta {
   font-size: 13px;
   color: #777;
@@ -321,7 +348,7 @@ onMounted(() => {
 
 /* ================= 댓글 수정 ================= */
 .edit-box {
-  margin-top: 12px; /* 🔥 글자랑 textarea 분리 */
+  margin-top: 12px; /* 글자랑 textarea 분리 */
 }
 
 .edit-textarea {

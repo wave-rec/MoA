@@ -163,3 +163,6 @@ SIMPLE_JWT = {
 }
 
 GMS_API_KEY = os.getenv("GMS_API_KEY", "")
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Post, Comment
+from .models import Post, Comment, PostImage
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -32,15 +32,24 @@ class PostListSerializer(serializers.ModelSerializer):
             'category_display',
         ]
 
+class PostImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PostImage
+        fields = ['id', 'image']
+
 
 class PostDetailSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.name', read_only=True)
-    comments = CommentSerializer(many=True, read_only=True)
     user_id = serializers.IntegerField(source='user.id', read_only=True)
+    comments = CommentSerializer(many=True, read_only=True)
+
+    images = PostImageSerializer(many=True, read_only=True)
+
     category_display = serializers.CharField(
         source='get_category_display',
         read_only=True
     )
+
     class Meta:
         model = Post
         fields = '__all__'

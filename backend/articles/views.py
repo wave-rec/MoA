@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from django.db.models import Count, Q
-from .models import Post, Comment
+from .models import Post, Comment, PostImage
 from .serializers import (
     PostListSerializer,
     PostDetailSerializer,
@@ -11,10 +11,12 @@ from .permissions import IsOwner
 from django.db.models import Count
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
 
 # 게시글 목록 및 작성
 class PostListCreateView(generics.ListCreateAPIView):
     permission_classes = []
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_queryset(self):
         queryset = Post.objects.annotate(
@@ -27,7 +29,7 @@ class PostListCreateView(generics.ListCreateAPIView):
             category = category.rstrip('/')
             queryset = queryset.filter(category=category)
 
-        # 🔍 검색 필터 (제목 OR 내용)
+        # 검색 필터 (제목 OR 내용)
         search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(
@@ -42,8 +44,12 @@ class PostListCreateView(generics.ListCreateAPIView):
         return PostDetailSerializer
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        post = serializer.save(user=self.request.user)
 
+        images = self.request.FILES.getlist('images')
+        for image in images:
+            PostImage.objects.create(post=post, image=image)
+            
     def get_permissions(self):
         if self.request.method == 'POST':
             return [permissions.IsAuthenticated()]
