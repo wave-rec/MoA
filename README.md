@@ -447,7 +447,7 @@ VITE_YOUTUBE_API_KEY=your_youtube_api_key
 
 #### 상품 상세 조회
 
-![상품 조회](https://github.com/user-attachments/assets/a59d717b-e3ff-43f0-99f6-39279a8de2f3)
+![상품 상세 조회](https://github.com/user-attachments/assets/65abcea0-6c76-47d2-9900-751e55c6c857)
 
 -   기본 금리 / 최고 금리 정보
 -   기간별 금리 테이블
@@ -461,7 +461,7 @@ VITE_YOUTUBE_API_KEY=your_youtube_api_key
 <details>
 <summary><b>AI 맞춤 분석</b></summary>
 
-![AI 분석](https://github.com/user-attachments/assets/eaa1fabf-2a54-4838-b1da-0f75d37187b1)
+![AI 분석](https://github.com/user-attachments/assets/455b326a-14a2-41aa-b415-e962dde5ee50)
 
 -   연령대별 맞춤 한줄평
 -   종합 분석 제공
@@ -478,7 +478,7 @@ VITE_YOUTUBE_API_KEY=your_youtube_api_key
 
 #### 마이페이지
 
-![마이페이지](https://github.com/user-attachments/assets/e933e0a6-eb21-4839-a5a2-bf3c94c2dc08)
+![마이페이지](https://github.com/user-attachments/assets/54d4304d-f580-4078-b75f-1e90ed1e1bfe)
 
 -   프로필 정보 조회
 -   회원 정보 수정
