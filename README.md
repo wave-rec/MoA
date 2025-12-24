@@ -447,7 +447,7 @@ VITE_YOUTUBE_API_KEY=your_youtube_api_key
 
 #### 상품 상세 조회
 
-![상품 상세 조회](https://github.com/user-attachments/assets/65abcea0-6c76-47d2-9900-751e55c6c857)
+![상품 상세](https://github.com/user-attachments/assets/60f04d6a-6843-4604-9887-2bfcb8a0832b)
 
 -   기본 금리 / 최고 금리 정보
 -   기간별 금리 테이블
