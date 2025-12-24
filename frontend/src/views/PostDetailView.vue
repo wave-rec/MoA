@@ -20,6 +20,8 @@
         <span class="date">{{ formatDate(post.created_at) }}</span>
       </div>
 
+      <div class="divider"></div>
+
       <!-- 글 내용 -->
       <p class="content">{{ post.content }}</p>
 
@@ -136,14 +138,12 @@ const isMyPost = computed(() =>
 const isMyComment = (comment) =>
   authStore.isLogin && comment.user_name === authStore.user?.name
 
-/* 이미지 URL */
 const getImageUrl = (path) => {
   if (!path) return ''
   if (path.startsWith('http')) return path
   return `${api.defaults.baseURL}${path}`
 }
 
-/* 게시글 */
 const fetchPost = async () => {
   const res = await api.get(`/api/v1/posts/${postId}/`)
   post.value = res.data
@@ -159,7 +159,6 @@ const goEditPost = () => {
   router.push(`/posts/${postId}/edit`)
 }
 
-/* 댓글 */
 const fetchComments = async () => {
   const res = await api.get(`/api/v1/posts/${postId}/comments/`)
   comments.value = res.data
@@ -167,10 +166,7 @@ const fetchComments = async () => {
 
 const submitComment = async () => {
   if (!authStore.isLogin) {
-    router.push({
-      path: '/login',
-      query: { redirect: route.fullPath },
-    })
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
     return
   }
 
@@ -265,7 +261,7 @@ onMounted(() => {
 .meta {
   display: flex;
   align-items: center;
-  gap: 8px;  
+  gap: 8px;
   font-size: 13px;
   color: #777;
 }
@@ -275,9 +271,16 @@ onMounted(() => {
   white-space: pre-wrap;
 }
 
+/* ✅ 위·아래 구분선 통일 */
+.divider {
+  height: 2px;
+  background-color: #e6edff;
+  margin: 16px 0 24px;
+}
+
 /* ================= 댓글 영역 ================= */
 .comment-section {
-  margin-top: 60px; /* 게시글이랑 충분히 띄움 */
+  margin-top: 60px;
 }
 
 .comment-title {
@@ -286,15 +289,14 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
-/* 댓글 작성 */
 .comment-form {
-  margin-bottom: 50px; /* 댓글 목록과 간격 */
+  margin-bottom: 50px;
 }
 
 .comment-info {
   display: flex;
   align-items: center;
-  gap: 8px;  
+  gap: 8px;
 }
 
 .comment-textarea {
@@ -306,7 +308,7 @@ onMounted(() => {
   font-size: 14px;
   box-sizing: border-box;
   resize: vertical;
-  margin-top: 10px; 
+  margin-top: 10px;
 }
 
 .comment-textarea:focus {
@@ -317,7 +319,7 @@ onMounted(() => {
 .comment-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 14px; 
+  margin-top: 14px;
 }
 
 .primary-btn {
@@ -330,7 +332,6 @@ onMounted(() => {
   font-size: 13px;
 }
 
-/* ================= 댓글 목록 ================= */
 .comment-list li {
   border-bottom: 1px solid #eef2ff;
   padding: 24px 0;
@@ -342,37 +343,18 @@ onMounted(() => {
   align-items: center;
 }
 
-/* 댓글 작성자 + 날짜 (게시글 meta와 통일) */
-.comment-meta {
-  font-size: 13px;
-  color: #777;
-}
-
-.comment-meta strong {
-  font-weight: 600;
-  color: #111;
-  margin-right: 6px;
-}
-
-.comment-actions {
-  display: flex;
-  gap: 12px;
-}
-
 .comment-actions .action-btn {
   font-size: 12px;
 }
 
-/* 댓글 내용 */
 .comment-content {
   margin-top: 10px;
   line-height: 1.6;
   white-space: pre-wrap;
 }
 
-/* ================= 댓글 수정 ================= */
 .edit-box {
-  margin-top: 12px; /* 글자랑 textarea 분리 */
+  margin-top: 12px;
 }
 
 .edit-textarea {
@@ -386,12 +368,4 @@ onMounted(() => {
   resize: vertical;
   margin-top: 8px;
 }
-
-.edit-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 10px;
-}
-
 </style>
