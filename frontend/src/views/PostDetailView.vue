@@ -272,6 +272,7 @@ onMounted(() => {
 
 .content {
   line-height: 1.7;
+  white-space: pre-wrap;
 }
 
 /* ================= 댓글 영역 ================= */
@@ -366,6 +367,7 @@ onMounted(() => {
 .comment-content {
   margin-top: 10px;
   line-height: 1.6;
+  white-space: pre-wrap;
 }
 
 /* ================= 댓글 수정 ================= */
