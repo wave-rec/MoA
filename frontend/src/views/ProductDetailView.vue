@@ -482,6 +482,17 @@ const handleSubscribe = async () => {
   subscribing.value = true
 
   try {
+    const checkRes = await apiClient.get('/products/subscriptions/')
+    const subscribedProducts = checkRes.data
+
+    const alreadySubscribed = subscribedProducts.some((p) => p.id === parseInt(route.params.id))
+
+    if (alreadySubscribed) {
+      alert('이미 가입한 상품입니다.')
+      subscribing.value = false
+      return
+    }
+
     const productId = route.params.id
     await apiClient.post(`/products/${productId}/subscribe/`)
 
@@ -495,7 +506,7 @@ const handleSubscribe = async () => {
       alert('로그인이 필요합니다.')
       router.push('/login')
     } else if (status === 400) {
-      alert(e?.response?.data?.detail || '이미 가입한 상품입니다.')
+      alert(e?.response?.data?.detail || '이미 가입하신 상품입니다.')
     } else {
       alert('가입 중 오류가 발생했습니다.')
     }
