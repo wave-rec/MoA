@@ -1,7 +1,5 @@
 <template>
   <div class="post-create">
-
-    <!-- 상단 여백 -->
     <div class="top-space"></div>
 
     <h2 class="title">게시글 작성</h2>
@@ -24,23 +22,25 @@
 
         <div class="guide-box">
           <p class="guide-title">
-            체크하면 글 구조가 자동으로 만들어져요
+            아래 버튼을 누르면 글 구조가 자동으로 들어가요
           </p>
 
-          <div class="guide-list">
-            <label
-              v-for="guide in guides"
-              :key="guide"
-              class="guide-item"
+          <!-- ✅ 가이드 미리보기 -->
+          <ul class="guide-preview">
+            <li v-for="guide in guides" :key="guide">
+              • {{ guide }}
+            </li>
+          </ul>
+
+          <!-- 버튼 -->
+          <div class="guide-actions">
+            <button
+              type="button"
+              class="guide-btn"
+              @click="insertAllGuides"
             >
-              <input
-                type="checkbox"
-                :value="guide"
-                v-model="checkedGuides"
-                @change="insertGuide"
-              />
-              <span class="guide-text">{{ guide }}</span>
-            </label>
+              가이드 전체 입력
+            </button>
           </div>
         </div>
       </div>
@@ -59,12 +59,13 @@
       <div class="form-row align-top">
         <label>글 내용</label>
         <textarea
+          ref="contentTextarea"
           v-model="content"
           placeholder="선택한 항목을 중심으로 자유롭게 작성해주세요."
         ></textarea>
       </div>
 
-      <!-- 사진 (글 내용 아래) -->
+      <!-- 사진 -->
       <div class="form-row align-top">
         <label>사진</label>
 
@@ -76,7 +77,6 @@
             @change="onImageChange"
           />
 
-          <!-- 미리보기 -->
           <div v-if="previewImages.length" class="preview-list">
             <div
               v-for="(img, idx) in previewImages"
@@ -95,7 +95,7 @@
         </div>
       </div>
 
-      <!-- 버튼 -->
+      <!-- 등록 버튼 -->
       <button class="submit-btn" @click="submitPost">
         글 올리기
       </button>
@@ -113,10 +113,11 @@ import { useAuthStore } from '@/stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
+/* 상태 */
 const selectedCategory = ref('예금')
 const title = ref('')
 const content = ref('')
-const checkedGuides = ref([])
+const contentTextarea = ref(null)
 
 /* 이미지 */
 const images = ref([])
@@ -129,7 +130,7 @@ const categoryMap = {
   기타: 'ETC',
 }
 
-/* 가이드 문구 */
+/* 가이드 */
 const guideMap = {
   예금: [
     '왜 이 예금을 선택했나요?',
@@ -151,18 +152,24 @@ const guideMap = {
   ],
 }
 
-const guides = computed(() => {
-  return guideMap[selectedCategory.value] || []
-})
+const guides = computed(() => guideMap[selectedCategory.value] || [])
 
-/* 체크 → 글 구조 */
-const insertGuide = () => {
-  content.value = checkedGuides.value
-    .map((g) => `- ${g}\n\n`)
-    .join('')
+/* ✅ 가이드 전체 입력 */
+const insertAllGuides = () => {
+  const guideText = guides.value
+    .map(g => `- ${g}`)
+    .join('\n\n')
+
+  content.value = content.value
+    ? `${guideText}\n\n${content.value}`
+    : guideText
+
+  requestAnimationFrame(() => {
+    contentTextarea.value?.focus()
+  })
 }
 
-/* 이미지 선택 */
+/* 이미지 */
 const onImageChange = (e) => {
   const files = Array.from(e.target.files)
   images.value = files
@@ -171,7 +178,6 @@ const onImageChange = (e) => {
   )
 }
 
-/* 이미지 삭제 */
 const removeImage = (idx) => {
   images.value.splice(idx, 1)
   previewImages.value.splice(idx, 1)
@@ -190,22 +196,12 @@ const submitPost = async () => {
   formData.append('content', content.value)
   formData.append('category', categoryMap[selectedCategory.value])
 
-  images.value.forEach((img) => {
+  images.value.forEach(img => {
     formData.append('images', img)
   })
 
-  try {
-  const res = await api.post('/api/v1/posts/', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  })
-
+  const res = await api.post('/api/v1/posts/', formData)
   router.push(`/posts/${res.data.id}`)
-} catch (e) {
-  console.error('글 작성 실패', e)
-}
-
 }
 </script>
 
@@ -227,10 +223,6 @@ const submitPost = async () => {
   margin-bottom: 40px;
 }
 
-.form {
-  width: 100%;
-}
-
 .form-row {
   display: flex;
   align-items: center;
@@ -244,7 +236,7 @@ const submitPost = async () => {
 .form-row label {
   width: 120px;
   font-weight: 600;
-  color: #6393F2;
+  color: #6393f2;
   padding-top: 10px;
 }
 
@@ -274,30 +266,37 @@ const submitPost = async () => {
 .guide-title {
   font-size: 14px;
   font-weight: 600;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
-.guide-list {
+/* 가이드 미리보기 */
+.guide-preview {
+  margin: 10px 0 16px;
+  padding-left: 0;
+  list-style: none;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.guide-preview li {
+  margin-bottom: 6px;
+}
+
+.guide-actions {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  justify-content: flex-start;
 }
 
-.guide-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.guide-text {
-  white-space: nowrap;
+.guide-btn {
+  background: #eef2ff;
+  border: 1px solid #c7d3ff;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
 }
 
 /* 이미지 */
-.image-upload-box {
-  flex: 1;
-}
-
 .preview-list {
   display: flex;
   gap: 10px;
@@ -344,7 +343,6 @@ const submitPost = async () => {
   cursor: pointer;
 }
 
-/* select 화살표 */
 select {
   appearance: none;
   -webkit-appearance: none;

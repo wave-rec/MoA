@@ -125,6 +125,11 @@ const handleSignup = async () => {
       age: age.value,
     })
 
+    errors.email = ''
+    errors.password = ''
+    errors.name = ''
+    errors.age = ''
+
     // 2. 바로 로그인
     const res = await login({
       email: email.value,
