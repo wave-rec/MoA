@@ -213,14 +213,160 @@ frontend/
     └── constants/
         └── financialTerms.js    # 금융 용어 데이터 (24개)
 ```
-
+    
+    
 <br/>
+
+## 🏗 서비스 아키텍처
+
+### 전체 시스템 구조
+
+<img width="1408" height="768" alt="Image" src="https://github.com/user-attachments/assets/5d18a771-0cc4-4f59-9617-e68d4cf43cb8" />
+
+### API 흐름도 (상품 추천 시퀀스)
+
+<img width="1408" height="768" alt="Image" src="https://github.com/user-attachments/assets/891a113f-8e0f-48b1-8cf6-25795dde802e" />
 
 ## 🖨 ERD
 
 <img width="1344" height="913" alt="Image" src="https://github.com/user-attachments/assets/bd7648b5-c69a-4d56-8daf-7419a68beb55" />
 
-&nbsp;
+<br/>
+
+## 🎨 화면 설계
+
+### 플로우차트
+<img width="3757" height="1779" alt="Image" src="https://github.com/user-attachments/assets/e9f1a3f3-f8ed-4fc7-8704-dd239a91bab3" />
+
+### 와이어프레임
+<img width="790" height="832" alt="Image" src="https://github.com/user-attachments/assets/41b565b1-3028-48f7-9974-56f886536c76" />
+
+<br />
+
+## 💡 핵심 기능 상세 설명
+
+### 1. 🤖 AI 기반 맞춤 상품 분석
+
+#### 연령대별 프롬프트 엔지니어링
+
+**20대 전략**
+```python
+- 핵심 목표: 종잣돈 모으기, 결혼 자금, 첫 투자 시드머니
+- 추천 포인트: 단기 적금(6~12개월), 비대면 편의성
+- 금지 단어: "노후", "은퇴", "연금"
+- 사용 단어: "첫 목돈", "결혼 준비", "종잣돈"
+```
+
+**30대 전략**
+```python
+- 핵심 목표: 주택 구입 자금, 육아 준비금, 목돈 굴리기
+- 추천 포인트: 중기 상품(12~24개월), 안정성 중시
+- 사용 단어: "내집 마련", "자녀 교육비", "재테크 시작"
+```
+
+**40대 전략**
+```python
+- 핵심 목표: 자녀 교육비, 노후 준비 시작
+- 추천 포인트: 장기 상품, 예금자보호, 안정성 최우선
+- 사용 단어: "교육비 준비", "안정적 수익"
+```
+
+**50대+ 전략**
+```python
+- 핵심 목표: 은퇴 준비, 연금 보완, 생활비 마련
+- 추천 포인트: 단기 예금, 예금자보호 필수, 높은 금리
+- 사용 단어: "은퇴 준비", "안전한 자산"
+```
+
+#### AI 응답 파싱 로직
+```python
+def parse_ai_response(text):
+    # 정규표현식으로 구조화된 데이터 추출
+    # 1. 한줄평: 50자 이내 핵심 가치
+    # 2. 종합 분석: 250자 상세 분석
+    # 3. 핵심 우대 혜택: 3가지 체크리스트
+    # 4. 추천 이유: 각 100자씩 3개
+    # 5. 주의사항: 120자 위험 요소
+```
+
+### 2. 📊 맞춤형 추천 알고리즘
+
+#### 매칭 스코어 계산 방식
+
+```python
+def _score(product: Product, months: int, want_nftf, want_dp) -> int:
+    score = 50  # 기본 점수
+    
+    # 비대면 가입 매칭 (+20점)
+    if want_nftf and product.is_non_face_to_face:
+        score += 20
+    
+    # 예금자 보호 매칭 (+20점)
+    if want_dp and product.is_deposit_protected:
+        score += 20
+    
+    # 금리 정보 존재 (+10점)
+    if product.max_rate or product.base_rate:
+        score += 10
+    
+    return min(score, 100)
+```
+
+#### 연령대별 자동 추천 로직
+
+```python
+# 40세 미만: 비대면 선호
+if user_age < 40 and product.is_non_face_to_face:
+    is_recommended = True
+
+# 40세 이상: 안정성(예금자보호) 선호
+elif user_age >= 40 and product.is_deposit_protected:
+    is_recommended = True
+
+# 금리 3% 이상 + 조건 일치 시 추천
+if (max_rate or 0) >= 3.0 and age_match:
+    is_recommended = True
+```
+
+#### 예상 수령액 자동 계산
+
+**예금 (단리 계산)**
+```python
+principal = amount
+interest = amount * (max_rate / 100) * (months / 12)
+expected_amount = principal + interest
+```
+
+**적금 (월복리 계산)**
+```python
+monthly = amount
+total_principal = monthly * months
+interest = monthly * ((months * (months + 1)) / 2) * (max_rate / 100 / 12)
+expected_amount = total_principal + interest
+```
+
+### 3. 💳 실시간 금융 데이터 수집
+
+#### FSS API 데이터 파싱
+
+```python
+# 비대면 가입 여부 자동 판별
+def _is_non_face_to_face(join_way: str) -> bool:
+    return ("인터넷" in join_way) or ("스마트폰" in join_way)
+
+# 기간별 금리 저장
+for option in options:
+    ProductRate.objects.update_or_create(
+        product=product,
+        save_terms_months=save_trm,
+        defaults={
+            "base_rate": base_rate,
+            "max_rate": max_rate,
+        }
+    )
+```
+    
+<br/>
 
 ## 📝 코드 컨벤션
 
