@@ -213,8 +213,7 @@ frontend/
     └── constants/
         └── financialTerms.js    # 금융 용어 데이터 (24개)
 ```
-    
-    
+
 <br/>
 
 ## 🏗 서비스 아키텍처
@@ -236,9 +235,11 @@ frontend/
 ## 🎨 화면 설계
 
 ### 플로우차트
+
 <img width="3757" height="1779" alt="Image" src="https://github.com/user-attachments/assets/e9f1a3f3-f8ed-4fc7-8704-dd239a91bab3" />
 
 ### 와이어프레임
+
 <img width="790" height="832" alt="Image" src="https://github.com/user-attachments/assets/41b565b1-3028-48f7-9974-56f886536c76" />
 
 <br />
@@ -250,6 +251,7 @@ frontend/
 #### 연령대별 프롬프트 엔지니어링
 
 **20대 전략**
+
 ```python
 - 핵심 목표: 종잣돈 모으기, 결혼 자금, 첫 투자 시드머니
 - 추천 포인트: 단기 적금(6~12개월), 비대면 편의성
@@ -258,6 +260,7 @@ frontend/
 ```
 
 **30대 전략**
+
 ```python
 - 핵심 목표: 주택 구입 자금, 육아 준비금, 목돈 굴리기
 - 추천 포인트: 중기 상품(12~24개월), 안정성 중시
@@ -265,6 +268,7 @@ frontend/
 ```
 
 **40대 전략**
+
 ```python
 - 핵심 목표: 자녀 교육비, 노후 준비 시작
 - 추천 포인트: 장기 상품, 예금자보호, 안정성 최우선
@@ -272,6 +276,7 @@ frontend/
 ```
 
 **50대+ 전략**
+
 ```python
 - 핵심 목표: 은퇴 준비, 연금 보완, 생활비 마련
 - 추천 포인트: 단기 예금, 예금자보호 필수, 높은 금리
@@ -279,6 +284,7 @@ frontend/
 ```
 
 #### AI 응답 파싱 로직
+
 ```python
 def parse_ai_response(text):
     # 정규표현식으로 구조화된 데이터 추출
@@ -296,19 +302,19 @@ def parse_ai_response(text):
 ```python
 def _score(product: Product, months: int, want_nftf, want_dp) -> int:
     score = 50  # 기본 점수
-    
+
     # 비대면 가입 매칭 (+20점)
     if want_nftf and product.is_non_face_to_face:
         score += 20
-    
+
     # 예금자 보호 매칭 (+20점)
     if want_dp and product.is_deposit_protected:
         score += 20
-    
+
     # 금리 정보 존재 (+10점)
     if product.max_rate or product.base_rate:
         score += 10
-    
+
     return min(score, 100)
 ```
 
@@ -331,6 +337,7 @@ if (max_rate or 0) >= 3.0 and age_match:
 #### 예상 수령액 자동 계산
 
 **예금 (단리 계산)**
+
 ```python
 principal = amount
 interest = amount * (max_rate / 100) * (months / 12)
@@ -338,6 +345,7 @@ expected_amount = principal + interest
 ```
 
 **적금 (월복리 계산)**
+
 ```python
 monthly = amount
 total_principal = monthly * months
@@ -365,7 +373,7 @@ for option in options:
         }
     )
 ```
-    
+
 <br/>
 
 ## 📝 코드 컨벤션
@@ -632,7 +640,7 @@ VITE_YOUTUBE_API_KEY=your_youtube_api_key
 
 #### 가입 상품 관리
 
-![가입 상품 관리](https://github.com/user-attachments/assets/bdca2e9c-7585-43b8-bd2a-4227292845d8)
+![가입 상품 관리](https://github.com/user-attachments/assets/6143a589-17fb-40a0-97a6-92fe9511c01d)
 
 -   가입한 상품 목록 조회
 -   상품별 금리 정보 확인
@@ -654,7 +662,7 @@ VITE_YOUTUBE_API_KEY=your_youtube_api_key
 
 #### 게시글 작성
 
-![게시글 작성](https://github.com/user-attachments/assets/81514ee6-6b2e-40d1-9b3a-87bcb64ce5b4)
+![게시글 작성](https://github.com/user-attachments/assets/7b89c92f-4412-45dc-b47d-fc51e7f4b250)
 ![게시글 작성 제한](https://github.com/user-attachments/assets/c8516d10-3e4e-43e7-8388-e2b7efc02aea)
 
 -   카테고리 선택 (예금 / 적금 / 기타)
@@ -664,7 +672,7 @@ VITE_YOUTUBE_API_KEY=your_youtube_api_key
 
 #### 게시글 조회 및 검색
 
-![게시글 조회 및 검색](https://github.com/user-attachments/assets/00c52e22-f905-42a7-90b1-1e41c81df840)
+![게시글 조회 및 검색](https://github.com/user-attachments/assets/bd8a3184-4d76-4019-9171-88054cacd62a)
 
 -   카테고리별 필터링
 -   검색 기능
@@ -672,7 +680,7 @@ VITE_YOUTUBE_API_KEY=your_youtube_api_key
 
 #### 게시글 수정 및 댓글 작성, 삭제
 
-![게시글 수정](https://github.com/user-attachments/assets/72aae4db-072e-4ce2-8dfb-003533889485)
+![게시글 권한별 수정 및 삭제](https://github.com/user-attachments/assets/d49ba44b-4db0-40dc-b583-fdee33ef05bb)
 
 -   작성자만 수정 / 삭제 가능
 -   권한 검증
@@ -708,7 +716,7 @@ VITE_YOUTUBE_API_KEY=your_youtube_api_key
 <details>
 <summary><b>유튜브 금융 콘텐츠</b></summary>
 
-![유튜브 검색](https://github.com/user-attachments/assets/29851846-8789-4635-ab69-19ff36f0b62d)
+![유튜브 검색](https://github.com/user-attachments/assets/a34c15ec-f85b-4e8e-9d10-e6bf62dd282c)
 
 -   금융 용어 검색 기능
 -   5개 카테고리
